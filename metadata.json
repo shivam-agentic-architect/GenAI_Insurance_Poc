@@ -1,0 +1,5 @@
+{
+  "name": "GenAI Insurance Intelligence Assistant",
+  "description": "An AI-powered assistant for insurance companies to interact with fragmented data across multiple banking partners, providing insights, comparisons, and workflow support.",
+  "requestFramePermissions": []
+}
