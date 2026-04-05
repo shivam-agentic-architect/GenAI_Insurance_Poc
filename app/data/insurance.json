@@ -1,0 +1,22 @@
+{
+  "banks": [
+    { "id": "b1", "name": "HDFC Bank", "regions": ["Karnataka", "Maharashtra", "Delhi"] },
+    { "id": "b2", "name": "ICICI Bank", "regions": ["Karnataka", "Tamil Nadu", "Gujarat"] },
+    { "id": "b3", "name": "SBI", "regions": ["All India"] },
+    { "id": "b4", "name": "Axis Bank", "regions": ["Karnataka", "West Bengal"] }
+  ],
+  "products": [
+    { "id": "p1", "bankId": "b1", "category": "Health", "name": "HDFC Ergo Health", "coverage": "Hospitalization, Daycare, AYUSH" },
+    { "id": "p2", "bankId": "b2", "category": "Health", "name": "ICICI Lombard Health Shield", "coverage": "OPD, Wellness, Critical Illness" }
+  ],
+  "policies": [
+    { "category": "Life", "details": "Life insurance provides financial protection..." },
+    { "category": "Health", "details": "Health insurance covers medical expenses..." }
+  ],
+  "documents": [
+    { "title": "Health Insurance Policy Terms", "content": "Covers pre-existing diseases after 24 months..." }
+  ],
+  "faqs": [
+    { "question": "How can I renew my policy?", "answer": "Use app or website." }
+  ]
+}

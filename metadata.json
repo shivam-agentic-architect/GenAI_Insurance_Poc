@@ -1,5 +1,5 @@
 {
-  "name": "GenAI Insurance Intelligence Assistant",
-  "description": "An AI-powered assistant for insurance companies to interact with fragmented data across multiple banking partners, providing insights, comparisons, and workflow support.",
+  "name": "GenAI POC by Shivam Charan",
+  "description": "An AI-powered assistant for insurance companies to interact with fragmented data across multiple banking partners. Features advanced Gemini 3.1 models with secure API key selection for high-performance reasoning and data synthesis.",
   "requestFramePermissions": []
 }

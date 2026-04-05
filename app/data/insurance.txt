@@ -1,0 +1,59 @@
+Health insurance covers hospitalization and medical expenses.
+Health insurance includes doctor consultations and prescription costs.
+Health insurance may cover preventive care such as vaccinations.
+Health insurance often includes coverage for surgeries and treatments.
+Health insurance can include maternity and newborn care benefits.
+
+Car insurance covers accidents and vehicle damage.
+Car insurance includes third-party liability coverage.
+Car insurance protects against theft and natural disasters.
+Car insurance may cover repair costs after collisions.
+Car insurance includes personal accident cover for drivers.
+
+Life insurance provides financial support to family after death.
+Life insurance offers maturity benefits after policy term ends.
+Life insurance includes term plans and whole life plans.
+Life insurance can help in wealth creation and savings.
+Life insurance provides tax benefits under applicable laws.
+
+Travel insurance covers trip cancellations and delays.
+Travel insurance includes medical emergencies abroad.
+Travel insurance protects against lost baggage.
+Travel insurance covers flight cancellations and interruptions.
+Travel insurance may include emergency evacuation services.
+
+Home insurance protects against damage to property.
+Home insurance covers fire, theft, and natural disasters.
+Home insurance includes protection for household contents.
+Home insurance may cover temporary relocation expenses.
+Home insurance provides liability coverage for accidents at home.
+
+Business insurance protects against financial losses.
+Business insurance includes coverage for property and assets.
+Business insurance covers employee-related risks.
+Business insurance protects against legal liabilities.
+Business insurance may include cyber risk coverage.
+
+Motor insurance includes both car and bike insurance.
+Motor insurance is mandatory in many countries.
+Motor insurance protects against third-party damages.
+Motor insurance may include zero depreciation cover.
+Motor insurance provides coverage against accidents and theft.
+
+Critical illness insurance provides lump sum on diagnosis.
+Critical illness insurance covers diseases like cancer and heart attack.
+Critical illness insurance helps cover expensive treatments.
+Critical illness insurance provides financial support during recovery.
+Critical illness insurance complements regular health insurance.
+
+Personal accident insurance covers accidental injuries.
+Personal accident insurance provides disability benefits.
+Personal accident insurance includes accidental death cover.
+Personal accident insurance supports income loss due to injury.
+Personal accident insurance may cover hospitalization expenses.
+
+Pet insurance covers veterinary expenses.
+Pet insurance includes treatment for illnesses and injuries.
+Pet insurance may cover surgeries and medications.
+Pet insurance protects against unexpected healthcare costs.
+Pet insurance can include annual health checkups.

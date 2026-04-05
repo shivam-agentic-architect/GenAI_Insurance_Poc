@@ -14,7 +14,11 @@ import {
   Plus,
   X,
   ArrowLeftRight,
-  CheckCircle2
+  File,
+  Upload,
+  Loader2,
+  CheckCircle2,
+  LogOut
 } from "lucide-react";
 import { chat, getInsuranceData } from "./lib/gemini";
 
@@ -35,6 +39,7 @@ interface Product {
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [modelType, setModelType] = useState<"gemini" | "gpt">("gpt");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
@@ -48,6 +53,10 @@ export default function App() {
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStatus, setUploadStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const handleLogin = (e: React.FormEvent) => {
@@ -70,6 +79,67 @@ export default function App() {
     }
   }, [messages, isLoggedIn]);
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ["text/plain", "application/pdf"];
+    if (!allowedTypes.includes(file.type)) {
+      setUploadStatus({ type: "error", message: "Only .txt and .pdf files are supported." });
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadStatus(null);
+    setUploadProgress(0);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const xhr = new XMLHttpRequest();
+    
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        const percentComplete = Math.round((event.loaded / event.total) * 100);
+        setUploadProgress(percentComplete);
+      }
+    };
+
+    xhr.onload = () => {
+      try {
+        const data = JSON.parse(xhr.responseText);
+        if (xhr.status >= 200 && xhr.status < 300) {
+          setUploadStatus({ type: "success", message: `Successfully uploaded ${file.name}. ${data.chunks} chunks added to context.` });
+          
+          setMessages(prev => [...prev, {
+            role: "model",
+            text: `I've processed your document: **${file.name}**. I can now answer questions based on its content using the GPT (RAG) model.`,
+            timestamp: new Date()
+          }]);
+        } else {
+          setUploadStatus({ type: "error", message: data.error || "Upload failed" });
+        }
+      } catch (e) {
+        setUploadStatus({ type: "error", message: "Failed to parse server response" });
+      } finally {
+        setIsUploading(false);
+        setUploadProgress(0);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }
+    };
+
+    xhr.onerror = () => {
+      setUploadStatus({ type: "error", message: "Network error occurred during upload." });
+      setIsUploading(false);
+      setUploadProgress(0);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+
+    xhr.open("POST", "/api/upload");
+    xhr.send(formData);
+  };
+
   const handleSend = async (overrideInput?: string) => {
     const textToSend = overrideInput || input;
     if (!textToSend.trim() || isLoading) return;
@@ -80,18 +150,32 @@ export default function App() {
       timestamp: new Date(),
     };
 
+    setIsLoading(true);
     setMessages((prev) => [...prev, userMessage]);
     if (!overrideInput) setInput("");
-    setIsLoading(true);
 
     try {
-      const history = messages.map((m) => ({
-        role: m.role,
-        parts: [{ text: m.text }],
-      }));
+      let modelText = "";
+      
+      if (modelType === "gemini") {
+        const history = messages.map((m) => ({
+          role: m.role,
+          parts: [{ text: m.text }],
+        }));
 
-      const response = await chat(textToSend, history);
-      const modelText = response.text || "I'm sorry, I couldn't process that request.";
+        const response = await chat(textToSend, history);
+        modelText = response.text || "I'm sorry, I couldn't process that request.";
+      } else {
+        // Call Python GPT API via Express proxy
+        const response = await fetch(`/api/gpt/ask?q=${encodeURIComponent(textToSend)}`);
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error || `GPT service error (${response.status})`);
+        }
+        
+        modelText = data.response || "I'm sorry, I couldn't process that request from the GPT service.";
+      }
 
       const modelMessage: Message = {
         role: "model",
@@ -100,13 +184,19 @@ export default function App() {
       };
 
       setMessages((prev) => [...prev, modelMessage]);
-    } catch (error) {
-      console.error("Chat error:", error);
+    } catch (error: any) {
+      console.error("Chat error details:", error);
+      let errorMessage = "I encountered an error while processing your request. Please check your connection and try again.";
+      
+      if (error?.message?.includes("quota") || error?.message?.includes("RESOURCE_EXHAUSTED") || error?.message?.includes("429")) {
+        errorMessage = "I'm currently experiencing high traffic. Please wait a moment and try again.";
+      }
+      
       setMessages((prev) => [
         ...prev,
         {
           role: "model",
-          text: "I encountered an error while processing your request. Please try again.",
+          text: errorMessage,
           timestamp: new Date(),
         },
       ]);
@@ -136,7 +226,7 @@ export default function App() {
               <Shield className="w-8 h-8 text-white" />
             </div>
             <h1 className="text-2xl font-bold text-slate-900">Welcome Back</h1>
-            <p className="text-slate-500 text-sm mt-1">Insurance Intelligence Assistant</p>
+            <p className="text-slate-500 text-sm mt-1">GenAI POC - Shivam Charan</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-5">
@@ -213,9 +303,6 @@ export default function App() {
               <li className="flex items-center gap-3 text-sm text-slate-600 p-2 rounded-md hover:bg-slate-50 transition-colors">
                 <BarChart3 className="w-4 h-4" /> Real-time Insights
               </li>
-              <li className="flex items-center gap-3 text-sm text-slate-600 p-2 rounded-md hover:bg-slate-50 transition-colors">
-                <Building2 className="w-4 h-4" /> Partner Comparison
-              </li>
             </ul>
           </div>
 
@@ -237,12 +324,74 @@ export default function App() {
         </nav>
 
         <div className="mt-auto pt-6 border-t border-slate-100">
+          <div className="mb-4">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Knowledge Base</p>
+            
+            <div className="mb-3 p-2 bg-amber-50 border border-amber-200 rounded-lg text-[10px] text-amber-700 leading-tight">
+              <Info className="w-3 h-3 inline-block mr-1 mb-0.5" />
+              <strong>Warning:</strong> Do not upload any personal information. Its POC and demo pupose only.
+            </div>
+
+            <input 
+              type="file" 
+              ref={fileInputRef}
+              onChange={handleFileUpload}
+              className="hidden" 
+              accept=".txt,.pdf"
+            />
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-slate-100 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-200 transition-all disabled:opacity-50"
+            >
+              {isUploading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Upload className="w-4 h-4" />
+              )}
+              {isUploading ? "PROCESSING..." : "UPLOAD DOCUMENT"}
+            </button>
+
+            {isUploading && (
+              <div className="mt-3 space-y-1.5">
+                <div className="flex justify-between text-[10px] text-slate-500">
+                  <span>{uploadProgress < 100 ? "Uploading..." : "Processing..."}</span>
+                  <span>{uploadProgress}%</span>
+                </div>
+                <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden">
+                  <motion.div 
+                    className="h-full bg-blue-600"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${uploadProgress}%` }}
+                    transition={{ duration: 0.3 }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {uploadStatus && (
+              <motion.div 
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`mt-2 p-2 rounded-lg text-[10px] flex items-start gap-2 ${
+                  uploadStatus.type === "success" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+                }`}
+              >
+                {uploadStatus.type === "success" ? <CheckCircle2 className="w-3 h-3 shrink-0 mt-0.5" /> : <X className="w-3 h-3 shrink-0 mt-0.5" />}
+                <span>{uploadStatus.message}</span>
+                <button onClick={() => setUploadStatus(null)} className="ml-auto">
+                  <X className="w-2.5 h-2.5" />
+                </button>
+              </motion.div>
+            )}
+          </div>
+
           <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
             <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs">
               POC
             </div>
             <div>
-              <p className="text-xs font-medium">v1.1.0-beta</p>
+              <p className="text-xs font-medium">v1.2.0-dual-model</p>
               <p className="text-[10px] text-slate-400">GenAI Assistant</p>
             </div>
           </div>
@@ -257,8 +406,27 @@ export default function App() {
             <div className="lg:hidden p-1.5 bg-blue-600 rounded-md mr-2">
               <Shield className="w-5 h-5 text-white" />
             </div>
-            <h2 className="font-semibold text-slate-800">GenAI Insurance Assistant</h2>
+            <h2 className="font-semibold text-slate-800">GenAI POC - Shivam Charan</h2>
             <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-bold rounded-full uppercase">Active</span>
+            
+            <div className="ml-4 flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+              <button 
+                onClick={() => setModelType("gemini")}
+                className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${
+                  modelType === "gemini" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                GEMINI
+              </button>
+              <button 
+                onClick={() => setModelType("gpt")}
+                className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${
+                  modelType === "gpt" ? "bg-white text-green-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                GPT (RAG)
+              </button>
+            </div>
           </div>
           <div className="flex items-center gap-4">
             <button 
@@ -272,6 +440,17 @@ export default function App() {
               className="p-2 text-slate-400 hover:text-slate-600 transition-colors"
             >
               <RefreshCcw className="w-5 h-5" />
+            </button>
+            <button 
+              onClick={() => {
+                setIsLoggedIn(false);
+                setUsername("");
+                setPassword("");
+              }}
+              className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+              title="Logout"
+            >
+              <LogOut className="w-5 h-5" />
             </button>
             <div className="w-8 h-8 rounded-full bg-slate-200 border border-slate-300"></div>
           </div>
