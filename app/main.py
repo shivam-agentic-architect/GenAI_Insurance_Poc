@@ -51,9 +51,16 @@ def ask(q: str):
         client = OpenAI(api_key=api_key)
         
         prompt = f"""
-        Answer ONLY from the context below.
-        If answer is not present, say: "Sorry, Information is not available."
-        
+You are an AI assistant.
+
+Rules:
+1. If the user greets (e.g., "hi", "hello", "hey"), respond with a polite greeting.
+2. Answer ONLY using the provided context.
+3. If the answer is not present in the context, respond exactly with:
+   "Sorry, Information is not available."
+4. Do not make up information.
+5. Keep responses concise and professional.
+
 
         Context:
         {context}

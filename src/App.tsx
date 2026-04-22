@@ -39,7 +39,7 @@ interface Product {
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [modelType, setModelType] = useState<"gemini" | "gpt">("gpt");
+  const [modelType, setModelType] = useState<"gemini" | "gpt">("gemini");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
@@ -61,7 +61,7 @@ export default function App() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (username === "shivam" && password === "charan") {
+    if (username === "shivam" && password === "charan1") {
       setIsLoggedIn(true);
       setLoginError("");
     } else {
