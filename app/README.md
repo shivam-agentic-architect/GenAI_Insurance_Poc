@@ -30,7 +30,7 @@ To use this Python backend with the existing React frontend:
 
 ## Features Included
 - **FastAPI Server**: High-performance Python web framework.
-- **Gemini Integration**: Uses the `google-generativeai` SDK.
+- **AI Integration**: Uses high-performance Large Language Models.
 - **Function Calling**: Automatic tool use for querying the insurance database.
 - **RAG**: Search logic for documents and FAQs.
 - **Mock Data**: Pre-populated with banks, products, and policies.
