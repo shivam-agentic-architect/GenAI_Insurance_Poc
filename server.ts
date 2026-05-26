@@ -210,8 +210,8 @@ async function startServer() {
 
   // File upload endpoint
   app.post("/api/upload", upload.single("file"), async (req, res) => {
+    const file = req.file;
     try {
-      const file = req.file;
       if (!file) {
         return res.status(400).json({ error: "No file uploaded" });
       }
@@ -249,13 +249,20 @@ async function startServer() {
         }
       }
 
-      // Clean up uploaded file
-      fs.unlinkSync(file.path);
-
       res.json({ message: "File uploaded and processed successfully", chunks: chunks.length });
     } catch (error: any) {
       console.error("[RAG] Error processing upload:", error);
-      res.status(500).json({ error: error.message || "Failed to process file" });
+      // Security fix: Do not leak internal error details/stack trace
+      res.status(500).json({ error: "An error occurred while processing the uploaded file" });
+    } finally {
+      // Security fix: Always clean up uploaded file to prevent DoS via disk exhaustion
+      if (file && fs.existsSync(file.path)) {
+        try {
+          fs.unlinkSync(file.path);
+        } catch (e) {
+          console.error(`Failed to delete temporary file ${file.path}:`, e);
+        }
+      }
     }
   });
 
@@ -268,6 +275,10 @@ async function startServer() {
       const q = req.query.q as string;
       if (!q) {
         return res.status(400).json({ error: "Missing query parameter 'q'" });
+      }
+
+      if (q.length > 500) {
+        return res.status(400).json({ error: "Query parameter 'q' is too long" });
       }
       
       console.log(`[RAG] Processing query: ${q}`);
@@ -299,7 +310,8 @@ ${context}`
       res.json({ response: response.choices[0].message.content });
     } catch (error: any) {
       console.error("[RAG] Error processing query:", error);
-      res.status(500).json({ error: error.message || "Failed to process query" });
+      // Security fix: Do not leak internal error details/stack trace
+      res.status(500).json({ error: "An error occurred while processing your query" });
     }
   });
 
