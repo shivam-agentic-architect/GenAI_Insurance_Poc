@@ -7,6 +7,7 @@ import fs from "fs";
 import OpenAI from "openai";
 import multer from "multer";
 import * as pdfParse from "pdf-parse";
+import helmet from "helmet";
 const { PDFParse } = pdfParse;
 
 let openaiClient: OpenAI | null = null;
@@ -201,6 +202,7 @@ async function startServer() {
   const PORT = 3000;
 
   // Middleware
+  app.use(helmet({ contentSecurityPolicy: false }));
   app.use(express.json());
 
   // API routes
@@ -255,7 +257,7 @@ async function startServer() {
       res.json({ message: "File uploaded and processed successfully", chunks: chunks.length });
     } catch (error: any) {
       console.error("[RAG] Error processing upload:", error);
-      res.status(500).json({ error: error.message || "Failed to process file" });
+      res.status(500).json({ error: "Failed to process file" });
     }
   });
 
@@ -299,7 +301,7 @@ ${context}`
       res.json({ response: response.choices[0].message.content });
     } catch (error: any) {
       console.error("[RAG] Error processing query:", error);
-      res.status(500).json({ error: error.message || "Failed to process query" });
+      res.status(500).json({ error: "Failed to process query" });
     }
   });
 
