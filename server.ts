@@ -208,6 +208,26 @@ async function startServer() {
     res.json({ status: "ok" });
   });
 
+  // Authentication endpoint
+  app.post("/api/login", (req, res) => {
+    const { username, password } = req.body;
+
+    // Use environment variables for authentication to avoid hardcoded credentials
+    // Note: In a real app, passwords should be hashed, not stored in plaintext even in env vars
+    const adminUsername = process.env.ADMIN_USERNAME;
+    const adminPassword = process.env.ADMIN_PASSWORD;
+
+    if (!adminUsername || !adminPassword) {
+      return res.status(500).json({ error: "Server misconfiguration: Authentication credentials not set" });
+    }
+
+    if (username === adminUsername && password === adminPassword) {
+      res.json({ success: true });
+    } else {
+      res.status(401).json({ error: "Invalid username or password" });
+    }
+  });
+
   // File upload endpoint
   app.post("/api/upload", upload.single("file"), async (req, res) => {
     try {
