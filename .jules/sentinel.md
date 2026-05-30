@@ -1,0 +1,4 @@
+## 2024-03-24 - [HIGH] Missing File Size Limit on Uploads (DoS Risk)
+**Vulnerability:** Found `multer({ dest: "uploads/" })` being used without a `limits.fileSize` configuration in `server.ts`. This allows an attacker to upload arbitrarily large files, potentially exhausting server disk space and leading to a Denial of Service (DoS).
+**Learning:** Unrestricted file uploads are a common and critical risk, not just for malicious payloads (RCE, malware) but also for resource exhaustion. The default behavior of `multer` and many other upload middleware libraries is to accept files of any size unless explicitly bounded.
+**Prevention:** Always enforce strict file size limits when configuring upload middleware (e.g., `limits: { fileSize: 5 * 1024 * 1024 }` for 5MB). Additionally, validate file extensions and MIME types carefully before processing or saving files.
