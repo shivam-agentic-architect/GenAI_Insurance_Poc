@@ -208,6 +208,24 @@ async function startServer() {
     res.json({ status: "ok" });
   });
 
+  // Login endpoint
+  app.post("/api/login", (req, res) => {
+    const { username, password } = req.body;
+    const adminUsername = process.env.ADMIN_USERNAME;
+    const adminPassword = process.env.ADMIN_PASSWORD;
+
+    if (!adminUsername || !adminPassword) {
+      console.error("[Auth] Admin credentials not configured in environment variables");
+      return res.status(500).json({ error: "Server authentication misconfigured" });
+    }
+
+    if (username === adminUsername && password === adminPassword) {
+      return res.json({ success: true });
+    }
+
+    return res.status(401).json({ error: "Invalid username or password" });
+  });
+
   // File upload endpoint
   app.post("/api/upload", upload.single("file"), async (req, res) => {
     try {
