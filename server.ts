@@ -7,6 +7,7 @@ import fs from "fs";
 import OpenAI from "openai";
 import multer from "multer";
 import * as pdfParse from "pdf-parse";
+import session from "express-session";
 const { PDFParse } = pdfParse;
 
 let openaiClient: OpenAI | null = null;
@@ -203,13 +204,43 @@ async function startServer() {
   // Middleware
   app.use(express.json());
 
+  app.use(session({
+    secret: process.env.SESSION_SECRET || 'fallback_secret_key_change_in_production',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: process.env.NODE_ENV === 'production', httpOnly: true }
+  }));
+
+  // Authentication Middleware
+  const requireAuth = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if ((req.session as any).isLoggedIn) {
+      next();
+    } else {
+      res.status(401).json({ error: "Unauthorized" });
+    }
+  };
+
   // API routes
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
   });
 
+  // Login endpoint
+  app.post("/api/login", (req, res) => {
+    const { username, password } = req.body;
+    const adminUsername = process.env.ADMIN_USERNAME || "admin";
+    const adminPassword = process.env.ADMIN_PASSWORD || "admin";
+
+    if (username === adminUsername && password === adminPassword) {
+      (req.session as any).isLoggedIn = true;
+      res.json({ success: true });
+    } else {
+      res.status(401).json({ error: "Invalid username or password" });
+    }
+  });
+
   // File upload endpoint
-  app.post("/api/upload", upload.single("file"), async (req, res) => {
+  app.post("/api/upload", requireAuth, upload.single("file"), async (req, res) => {
     try {
       const file = req.file;
       if (!file) {
@@ -259,11 +290,11 @@ async function startServer() {
     }
   });
 
-  app.get("/api/insurance-data", (req, res) => {
+  app.get("/api/insurance-data", requireAuth, (req, res) => {
     res.json(insuranceData);
   });
 
-  app.get("/api/gpt/ask", async (req, res) => {
+  app.get("/api/gpt/ask", requireAuth, async (req, res) => {
     try {
       const q = req.query.q as string;
       if (!q) {
