@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type, FunctionDeclaration, GenerateContentResponse } from "@google/genai";
+import { Type, FunctionDeclaration } from "@google/genai";
 
 export const getInsuranceData = async () => {
   try {
@@ -68,49 +68,24 @@ async function retryWithBackoff<T>(fn: () => Promise<T>, maxRetries = 3): Promis
 
 export async function chat(message: string, history: any[] = []) {
   const model = "gemini-flash-latest";
-  const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
-  
-  if (!apiKey || apiKey === "undefined") {
-    console.error("[GenAI] API Key is missing or undefined.");
-    throw new Error("API Key missing. Please ensure you have set your GEMINI_API_KEY in the project settings or environment variables.");
-  }
-
-  if (apiKey.startsWith("sk-")) {
-    throw new Error("Invalid API Key: An OpenAI key (sk-...) was provided for a Gemini request. Please use a Google AI API key (typically starts with 'AIza').");
-  }
-
-  const ai = new GoogleGenAI({ apiKey });
   
   const contents = [...history, { role: "user", parts: [{ text: message }] }];
 
   const generateResponse = async (currentContents: any[]) => {
     try {
-      const result = await ai.models.generateContent({
-        model,
-        contents: currentContents,
-        config: {
-          systemInstruction: `You are the GenAI Insurance Intelligence Assistant (POC). 
-          Your goal is to help insurance companies and partners interact with insurance data naturally.
-          You have access to a mock database of banks, products, policies, detailed documents, and FAQs.
-          
-          Comparison Capabilities:
-          - Use 'queryInsuranceDatabase' with queryType='compare' and a list of 'productIds' to retrieve specific products for side-by-side comparison.
-          - When a user asks to compare specific products, ALWAYS use this tool to get the most accurate details.
-          - Present the comparison in a clear, easy-to-read Markdown table.
-          
-          RAG (Retrieval-Augmented Generation) Capabilities:
-          - Use 'queryInsuranceDatabase' with queryType='documents' or 'faqs' to retrieve relevant text context for user questions.
-          - When a user asks about specific policy terms, claim processes, or general insurance questions (FAQs), ALWAYS retrieve the relevant documents first.
-          - Synthesize the retrieved information into a helpful, accurate response.
-          
-          Database Querying Capabilities:
-          - Use 'queryInsuranceDatabase' with queryType='banks', 'products', or 'policies' for structured data.
-          
-          Always be professional, concise, and data-driven. If you don't have specific data, state that it's a POC and the data is limited.`,
-          tools: [{ functionDeclarations: [queryInsuranceDatabase] }],
-        },
+      const response = await fetch('/api/gemini/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: currentContents
+        })
       });
-      return result;
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
     } catch (err: any) {
       console.error("Gemini API Error:", err);
       const errorMessage = err?.message || String(err);
@@ -211,22 +186,23 @@ export async function chat(message: string, history: any[] = []) {
     }
 
     const secondResponse = await retryWithBackoff(() => {
-      try {
-        return ai.models.generateContent({
-          model,
+      return fetch('/api/gemini/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           contents: [
             ...contents,
             response.candidates[0].content,
             { role: "tool", parts: toolResponses }
-          ],
-          config: {
-            tools: [{ functionDeclarations: [queryInsuranceDatabase] }],
-          }
-        });
-      } catch (err) {
-        console.error("Gemini API Error (Second Call):", err);
-        throw err;
-      }
+          ]
+        })
+      }).then(async res => {
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      });
     });
 
     if (!secondResponse.candidates || secondResponse.candidates.length === 0) {
