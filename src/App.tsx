@@ -43,6 +43,7 @@ export default function App() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -59,13 +60,32 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (username === "shivam" && password === "charan1") {
-      setIsLoggedIn(true);
-      setLoginError("");
-    } else {
-      setLoginError("Invalid username or password");
+    setIsLoggingIn(true);
+    setLoginError("");
+
+    try {
+      const response = await fetch("/api/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username, password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setIsLoggedIn(true);
+      } else {
+        setLoginError(data.error || "Invalid username or password");
+      }
+    } catch (err) {
+      setLoginError("Failed to connect to the server. Please try again later.");
+      console.error("Login error:", err);
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -265,9 +285,10 @@ export default function App() {
 
             <button
               type="submit"
-              className="w-full py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20"
+                disabled={isLoggingIn}
+                className={`w-full py-3 ${isLoggingIn ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/20"} text-white font-semibold rounded-xl transition-colors flex items-center justify-center`}
             >
-              Sign In
+                {isLoggingIn ? <Loader2 className="w-5 h-5 animate-spin" /> : "Sign In"}
             </button>
           </form>
 

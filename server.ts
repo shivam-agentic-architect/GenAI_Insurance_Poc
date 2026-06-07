@@ -204,6 +204,24 @@ async function startServer() {
   app.use(express.json());
 
   // API routes
+  app.post("/api/login", (req, res) => {
+    const { username, password } = req.body || {};
+
+    const validUsername = process.env.ADMIN_USERNAME;
+    const validPassword = process.env.ADMIN_PASSWORD;
+
+    if (!validUsername || !validPassword) {
+      console.warn("Authentication credentials are not configured on the server.");
+      return res.status(500).json({ error: "Server authentication configuration missing" });
+    }
+
+    if (username === validUsername && password === validPassword) {
+      res.json({ success: true });
+    } else {
+      res.status(401).json({ error: "Invalid username or password" });
+    }
+  });
+
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
   });
