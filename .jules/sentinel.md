@@ -1,0 +1,5 @@
+
+## 2024-06-08 - [CRITICAL] Client-side Secrets Exposure via Vite Define
+**Vulnerability:** The `vite.config.ts` file used the `define` property to statically inject `GEMINI_API_KEY` directly into the client-side bundle. `src/lib/gemini.ts` then used this key to make API calls to Google's GenAI directly from the browser. This exposed the secret API key to any user, allowing unauthorized use of the API.
+**Learning:** Build tools like Vite, Webpack, and Next.js can easily expose secrets if environment variables are injected into the client bundle (e.g., using `define`, or prefixes like `VITE_` or `NEXT_PUBLIC_` for secrets). APIs that require authentication must be proxied through a backend server.
+**Prevention:** Never inject secrets into client-side bundles. Always move sensitive API calls to a backend server (e.g., an Express route or serverless function) and have the frontend communicate with your backend, not the third-party API directly. Use secure storage for secrets on the server.
