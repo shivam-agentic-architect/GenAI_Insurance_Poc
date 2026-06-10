@@ -1,0 +1,4 @@
+## 2026-06-10 - Hardcoded Admin Credentials in Frontend
+**Vulnerability:** The username (`shivam`) and password (`charan1`) were hardcoded in the frontend React component (`src/App.tsx`) to validate the login form. This is a critical security vulnerability as frontend code is fully exposed to clients, meaning anyone can inspect the source code and bypass the login.
+**Learning:** Client-side authentication checks using hardcoded values provide zero security. They are essentially security theater because the client holds both the lock and the key.
+**Prevention:** Always perform authentication validation on the server side using securely stored credentials (e.g., in a database or secure environment variables). Create an API endpoint for login that issues a token or manages a secure session upon successful verification.
