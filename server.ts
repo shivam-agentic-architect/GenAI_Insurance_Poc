@@ -208,6 +208,23 @@ async function startServer() {
     res.json({ status: "ok" });
   });
 
+  app.post("/api/login", (req, res) => {
+    const { username, password } = req.body;
+
+    const validUsername = process.env.ADMIN_USERNAME;
+    const validPassword = process.env.ADMIN_PASSWORD;
+
+    if (!validUsername || !validPassword) {
+      return res.status(500).json({ success: false, error: "Server configuration error: Admin credentials not set" });
+    }
+
+    if (username === validUsername && password === validPassword) {
+      res.json({ success: true, message: "Login successful" });
+    } else {
+      res.status(401).json({ success: false, error: "Invalid username or password" });
+    }
+  });
+
   // File upload endpoint
   app.post("/api/upload", upload.single("file"), async (req, res) => {
     try {
