@@ -27,7 +27,11 @@ let documents: string[] = [];
 let docEmbeddings: number[][] = [];
 
 // Configure multer for file uploads
-const upload = multer({ dest: "uploads/" });
+// Added a 5MB limit to prevent DoS attacks via extremely large files
+const upload = multer({
+  dest: "uploads/",
+  limits: { fileSize: 5 * 1024 * 1024 }
+});
 
 // Mock Insurance Data for the POC
 const insuranceData = {
@@ -209,7 +213,19 @@ async function startServer() {
   });
 
   // File upload endpoint
-  app.post("/api/upload", upload.single("file"), async (req, res) => {
+  app.post("/api/upload", (req, res, next) => {
+    upload.single("file")(req, res, (err) => {
+      if (err instanceof multer.MulterError) {
+        if (err.code === "LIMIT_FILE_SIZE") {
+          return res.status(400).json({ error: "File too large. Maximum size is 5MB." });
+        }
+        return res.status(400).json({ error: "File upload error occurred." });
+      } else if (err) {
+        return res.status(500).json({ error: "An unknown error occurred during upload." });
+      }
+      next();
+    });
+  }, async (req, res) => {
     try {
       const file = req.file;
       if (!file) {
