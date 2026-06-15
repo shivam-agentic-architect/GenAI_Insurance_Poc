@@ -27,7 +27,10 @@ let documents: string[] = [];
 let docEmbeddings: number[][] = [];
 
 // Configure multer for file uploads
-const upload = multer({ dest: "uploads/" });
+const upload = multer({
+  dest: "uploads/",
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+});
 
 // Mock Insurance Data for the POC
 const insuranceData = {
@@ -209,15 +212,26 @@ async function startServer() {
   });
 
   // File upload endpoint
-  app.post("/api/upload", upload.single("file"), async (req, res) => {
-    try {
-      const file = req.file;
-      if (!file) {
-        return res.status(400).json({ error: "No file uploaded" });
+  app.post("/api/upload", (req, res) => {
+    upload.single("file")(req, res, async (err) => {
+      if (err instanceof multer.MulterError) {
+        if (err.code === "LIMIT_FILE_SIZE") {
+          return res.status(413).json({ error: "File too large. Maximum size is 5MB." });
+        }
+        return res.status(400).json({ error: "File upload error." });
+      } else if (err) {
+        console.error("[RAG] Upload error:", err);
+        return res.status(500).json({ error: "An unexpected error occurred during file upload." });
       }
 
-      let text = "";
-      if (file.mimetype === "application/pdf") {
+      try {
+        const file = req.file;
+        if (!file) {
+          return res.status(400).json({ error: "No file uploaded" });
+        }
+
+        let text = "";
+        if (file.mimetype === "application/pdf") {
         const dataBuffer = fs.readFileSync(file.path);
         const parser = new PDFParse({ data: dataBuffer });
         const data = await parser.getText();
@@ -252,11 +266,12 @@ async function startServer() {
       // Clean up uploaded file
       fs.unlinkSync(file.path);
 
-      res.json({ message: "File uploaded and processed successfully", chunks: chunks.length });
-    } catch (error: any) {
-      console.error("[RAG] Error processing upload:", error);
-      res.status(500).json({ error: error.message || "Failed to process file" });
-    }
+        res.json({ message: "File uploaded and processed successfully", chunks: chunks.length });
+      } catch (error: any) {
+        console.error("[RAG] Error processing upload:", error);
+        res.status(500).json({ error: "Failed to process file" });
+      }
+    });
   });
 
   app.get("/api/insurance-data", (req, res) => {
