@@ -1,0 +1,4 @@
+## 2024-06-16 - DoS Vulnerability in File Upload Endpoint
+**Vulnerability:** The `/api/upload` endpoint in `server.ts` used `multer` without setting any file size limitations (`const upload = multer({ dest: "uploads/" });`). This allowed attackers to upload arbitrarily large files, which could lead to a Denial of Service (DoS) attack by exhausting server storage space and memory.
+**Learning:** `multer` does not apply file size limits by default. Omitting `limits` in the configuration opens the server to resource exhaustion.
+**Prevention:** Always enforce strict file size limits (e.g., `limits: { fileSize: 5 * 1024 * 1024 }`) when configuring `multer` or any file upload middleware, and catch associated errors (like `LIMIT_FILE_SIZE` MulterError) to return a safe `413 Payload Too Large` error, avoiding stack trace exposure.
