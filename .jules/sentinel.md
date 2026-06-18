@@ -1,0 +1,4 @@
+## 2025-03-05 - Fix Hardcoded Frontend Credentials
+**Vulnerability:** A critical vulnerability was found where the application's login logic was performed entirely on the client side in `src/App.tsx` (`username === "shivam" && password === "charan1"`). This meant the credentials were fundamentally exposed to anyone who could view the React application bundle.
+**Learning:** This reveals a pattern of performing sensitive authorization logic on the client side to simplify development or mock authorization. Client-side code should never be trusted with secrets or authorization decisions.
+**Prevention:** Always implement authentication validation on the server side using securely stored secrets (like environment variables) and avoid placing any credentials in client-side bundles (e.g., hardcoded values or injected `VITE_` variables).
