@@ -1,0 +1,4 @@
+## 2024-06-20 - [Fix DoS and Info Leak in File Upload Endpoint]
+ **Vulnerability:** The `/api/upload` endpoint in `server.ts` was vulnerable to Denial of Service (DoS) due to unbounded file uploads and disk exhaustion from failed file processing not cleaning up uploaded files. It also leaked internal error details to the client in case of failure.
+ **Learning:** When writing file upload handlers, it is crucial to set explicit size limits in the middleware (e.g. `multer`), and to wrap file processing in a `try...finally` block to ensure temporary files are deleted even if errors occur or the function returns early. Exposing `error.message` in HTTP 500 responses can leak sensitive system information.
+ **Prevention:** Always configure `multer` with a `limits` object (e.g. `limits: { fileSize: 5 * 1024 * 1024 }`). Use `finally` blocks for resource cleanup. Return generic error messages for 500 status codes.
