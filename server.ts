@@ -208,6 +208,30 @@ async function startServer() {
     res.json({ status: "ok" });
   });
 
+  // Authentication endpoint
+  app.post("/api/login", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+
+      const adminUsername = process.env.ADMIN_USERNAME;
+      const adminPassword = process.env.ADMIN_PASSWORD;
+
+      if (!adminUsername || !adminPassword) {
+        console.error("[Auth] Missing required admin credentials in environment variables.");
+        return res.status(500).json({ error: "Internal server error." });
+      }
+
+      if (username === adminUsername && password === adminPassword) {
+        return res.json({ success: true, message: "Logged in successfully" });
+      } else {
+        return res.status(401).json({ error: "Invalid username or password" });
+      }
+    } catch (error: any) {
+      console.error("[Auth] Login error:", error);
+      res.status(500).json({ error: "Failed to process login" });
+    }
+  });
+
   // File upload endpoint
   app.post("/api/upload", upload.single("file"), async (req, res) => {
     try {
