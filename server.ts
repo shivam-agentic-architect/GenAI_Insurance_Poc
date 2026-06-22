@@ -204,6 +204,18 @@ async function startServer() {
   app.use(express.json());
 
   // API routes
+  app.post("/api/login", (req, res) => {
+    const { username, password } = req.body;
+    if (
+      username && password &&
+      username === process.env.ADMIN_USERNAME &&
+      password === process.env.ADMIN_PASSWORD
+    ) {
+      return res.json({ success: true });
+    }
+    return res.status(401).json({ error: "Invalid credentials" });
+  });
+
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
   });
