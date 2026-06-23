@@ -26,8 +26,11 @@ function getOpenAI(): OpenAI {
 let documents: string[] = [];
 let docEmbeddings: number[][] = [];
 
-// Configure multer for file uploads
-const upload = multer({ dest: "uploads/" });
+// Configure multer for file uploads (with 5MB limit)
+const upload = multer({
+  dest: "uploads/",
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit to prevent DoS via disk exhaustion
+});
 
 // Mock Insurance Data for the POC
 const insuranceData = {
@@ -249,13 +252,20 @@ async function startServer() {
         }
       }
 
-      // Clean up uploaded file
-      fs.unlinkSync(file.path);
-
       res.json({ message: "File uploaded and processed successfully", chunks: chunks.length });
     } catch (error: any) {
       console.error("[RAG] Error processing upload:", error);
-      res.status(500).json({ error: error.message || "Failed to process file" });
+      // Fail securely - do not leak error details
+      res.status(500).json({ error: "Failed to process file. Please try again." });
+    } finally {
+      // Ensure file cleanup always happens to prevent disk exhaustion
+      if (req.file && fs.existsSync(req.file.path)) {
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch (cleanupError) {
+          console.error("[RAG] Error cleaning up file:", cleanupError);
+        }
+      }
     }
   });
 
