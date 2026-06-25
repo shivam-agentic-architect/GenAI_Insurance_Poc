@@ -1,0 +1,4 @@
+## 2025-02-27 - [CRITICAL] Fix Hardcoded Credentials in Client Bundle
+**Vulnerability:** The frontend React application (`src/App.tsx`) contained hardcoded credentials (`username === "shivam" && password === "charan1"`) for authentication. This exposed administrative credentials to anyone who inspects the client-side JavaScript bundle, allowing unauthorized access.
+**Learning:** Client-side source code is public by definition. Authentication logic and sensitive credentials must never be implemented or stored in the frontend, as they can be easily reverse-engineered or extracted from the application bundle.
+**Prevention:** Always implement authentication on the backend server. The client should send credentials to a server endpoint (e.g., `/api/login`) which validates them securely against environment variables or a database. Never use hardcoded fallback values for security-critical environment variables.
