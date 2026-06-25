@@ -208,6 +208,16 @@ async function startServer() {
     res.json({ status: "ok" });
   });
 
+  // Authentication endpoint
+  app.post("/api/login", (req, res) => {
+    const { username, password } = req.body;
+    // Validate against environment variables (no fallback values to prevent default credential access)
+    if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD && process.env.ADMIN_USERNAME) {
+      return res.json({ success: true });
+    }
+    return res.status(401).json({ error: "Invalid username or password" });
+  });
+
   // File upload endpoint
   app.post("/api/upload", upload.single("file"), async (req, res) => {
     try {
