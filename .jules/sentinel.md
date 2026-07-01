@@ -1,0 +1,4 @@
+## 2025-03-01 - Prevent Disk Exhaustion DoS in File Uploads
+**Vulnerability:** The `/api/upload` endpoint in `server.ts` used `multer` without restricting file size, and the temporary uploaded file was not systematically cleaned up (deleted) in cases where early returns occurred (like unsupported file types) or uncaught errors were thrown. This allowed attackers to perform a Denial of Service (DoS) attack through disk exhaustion by repeatedly uploading large or invalid files.
+**Learning:** File upload endpoints must explicitly configure size limits (e.g., via `multer`'s `limits` option) and guarantee the cleanup of temporary files stored on disk.
+**Prevention:** Always set `limits: { fileSize: MAX_BYTES }` when using `multer` or similar multipart parsers. Additionally, wrap all upload processing logic inside a `try...finally` block that ensures `fs.unlinkSync(file.path)` is always executed, regardless of whether processing succeeds, fails, or returns early.
