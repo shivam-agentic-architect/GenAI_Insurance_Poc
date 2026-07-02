@@ -1,0 +1,4 @@
+## 2025-03-09 - File Upload DoS and Info Leak
+**Vulnerability:** The `/api/upload` endpoint did not wrap temporary file processing in a `try...finally` block, leaving `fs.unlinkSync(file.path)` at the end of the `try` block. This meant that early returns (e.g. invalid format) or runtime errors bypassed file deletion, eventually causing disk space exhaustion. Additionally, catch blocks leaked raw `error.message` data to the client.
+**Learning:** File system resources like temporary files from `multer` must be cleaned up in a `finally` block to guarantee execution regardless of how the try block terminates. Unhandled application errors can inadvertently expose missing env variables or other internal state if `error.message` is sent to the client.
+**Prevention:** Always use `try { ... } finally { fs.unlinkSync(tempFile); }` when handling uploaded files. Use generic error messages (e.g., "Failed to process request") in catch blocks returning JSON responses.
