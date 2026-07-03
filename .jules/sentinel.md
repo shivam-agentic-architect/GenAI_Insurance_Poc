@@ -1,0 +1,4 @@
+## 2026-07-03 - File Upload DoS and Error Info Leakage
+**Vulnerability:** The `/api/upload` route accepted files of unlimited size and only cleaned up the temporary file on the success path, potentially leading to disk exhaustion (DoS). Additionally, both `/api/upload` and `/api/gpt/ask` returned raw `error.message` data to the client on failure, leaking potentially sensitive internal errors.
+**Learning:** File uploads must always have strict size limits, and cleanup must be guaranteed (using a `try...finally` block) regardless of success or failure. Error responses to clients should always be sanitized to generic messages to prevent information leakage.
+**Prevention:** Always configure `multer` with a `limits` object (e.g., `fileSize: 10 * 1024 * 1024`). Always use `finally` blocks for temporary resource cleanup. Never send unhandled `error.message` or `error.stack` to HTTP clients.
