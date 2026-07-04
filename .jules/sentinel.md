@@ -1,0 +1,4 @@
+## 2024-05-16 - Prevent Disk Exhaustion & Info Leakage
+**Vulnerability:** 1) Missing file size limit and guaranteed deletion on upload failures (DoS risk). 2) Exposing raw `error.message` to clients in API catch blocks (Information Disclosure).
+**Learning:** 1) File upload handlers must enforce size limits and use `try...finally` to ensure temp file cleanup regardless of processing success/failure. 2) API endpoints should log raw errors on the server but return generic, safe error messages to clients to avoid leaking sensitive data or configuration details.
+**Prevention:** 1) Use `multer` limits (e.g., `limits: { fileSize: 10 * 1024 * 1024 }`) and ensure `fs.unlinkSync` runs in a `finally` block. 2) Always return generic messages like "Failed to process request" from top-level `catch` blocks.
