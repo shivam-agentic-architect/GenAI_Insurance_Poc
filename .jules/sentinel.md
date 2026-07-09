@@ -1,0 +1,4 @@
+## 2025-03-05 - [Information Leakage in /ask endpoint]
+**Vulnerability:** The `/ask` endpoint in `app/main.py` leaked error details via `error_msg = str(e)`, presenting a potential information leakage vulnerability. This exposed internal system information, error types, and potentially sensitive details like backend architecture or API responses to the user.
+**Learning:** Returning raw error objects or strings directly to the client is a common security oversight when trying to be helpful during error debugging. It happens when developers forget to sanitize the exception message before raising an HTTP exception to the client.
+**Prevention:** Always use generic, user-friendly error messages (e.g., "An internal server error occurred") for unexpected exceptions in API endpoints. Keep detailed tracebacks and error strings restricted to server-side logs.
