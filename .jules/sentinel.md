@@ -1,0 +1,4 @@
+## 2024-05-24 - [Fix File Upload Resource Leak & Info Disclosure]
+**Vulnerability:** The `/api/upload` endpoint used `multer` but lacked a file size limit and a `try...finally` block for guaranteed file deletion, leading to potential disk exhaustion DoS. Additionally, error catch blocks in `/api/upload` and `/api/gpt/ask` leaked raw `error.message` data to the client.
+**Learning:** `multer` saves temporary files before passing them to the request handler. If an exception occurs during parsing (e.g., `PDFParse` fails), the file isn't automatically deleted unless explicitly handled in a `finally` block. Raw error messages can leak internal file paths and system details.
+**Prevention:** Always enforce file size limits in `multer` config. Wrap file processing logic in a `try...finally` block to guarantee cleanup with `fs.unlinkSync`. Use generic error messages for client responses to prevent info disclosure.
