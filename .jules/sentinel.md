@@ -1,0 +1,4 @@
+## 2025-05-24 - [Fix Hardcoded Credentials in React Frontend]
+ **Vulnerability:** Hardcoded admin credentials (`username === 'shivam' && password === 'charan1'`) were embedded directly in the React frontend code (`src/App.tsx`). This exposes the credentials to anyone who views the client-side bundle. Additionally, there was a risk of using insecure fallbacks for environment variables in the backend logic.
+ **Learning:** Client-side authentication checks offer zero security as the source code is public. All authentication must happen server-side where secrets are safe. Furthermore, backend checks must enforce that environment variables are strictly defined, preventing default credential access if the environment is misconfigured.
+ **Prevention:** Move all authentication logic to backend endpoints (e.g., `/api/login`). Use strict environment variable checks (e.g., `process.env.ADMIN_USERNAME`) without hardcoded fallback values to validate credentials on the server.
