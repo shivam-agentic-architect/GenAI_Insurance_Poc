@@ -208,6 +208,31 @@ async function startServer() {
     res.json({ status: "ok" });
   });
 
+  // Authentication endpoint
+  app.post("/api/login", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+
+      const expectedUsername = process.env.ADMIN_USERNAME;
+      const expectedPassword = process.env.ADMIN_PASSWORD;
+
+      if (!expectedUsername || !expectedPassword) {
+        // Critical: Do not fallback to default credentials
+        return res.status(500).json({ error: "Server authentication not properly configured" });
+      }
+
+      if (username === expectedUsername && password === expectedPassword) {
+        res.json({ success: true, message: "Authentication successful" });
+      } else {
+        // Generic error message to not leak whether username or password was wrong
+        res.status(401).json({ error: "Invalid username or password" });
+      }
+    } catch (error) {
+      console.error("[Auth] Error during login:", error);
+      res.status(500).json({ error: "Authentication failed" });
+    }
+  });
+
   // File upload endpoint
   app.post("/api/upload", upload.single("file"), async (req, res) => {
     try {
