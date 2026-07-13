@@ -27,7 +27,11 @@ let documents: string[] = [];
 let docEmbeddings: number[][] = [];
 
 // Configure multer for file uploads
-const upload = multer({ dest: "uploads/" });
+// Security: limit file size to 10MB to prevent DoS attacks
+const upload = multer({
+  dest: "uploads/",
+  limits: { fileSize: 10 * 1024 * 1024 }
+});
 
 // Mock Insurance Data for the POC
 const insuranceData = {
@@ -210,7 +214,9 @@ async function startServer() {
 
   // File upload endpoint
   app.post("/api/upload", upload.single("file"), async (req, res) => {
+    let fileToCleanUp: Express.Multer.File | undefined;
     try {
+      fileToCleanUp = req.file;
       const file = req.file;
       if (!file) {
         return res.status(400).json({ error: "No file uploaded" });
@@ -249,13 +255,19 @@ async function startServer() {
         }
       }
 
-      // Clean up uploaded file
-      fs.unlinkSync(file.path);
-
       res.json({ message: "File uploaded and processed successfully", chunks: chunks.length });
     } catch (error: any) {
       console.error("[RAG] Error processing upload:", error);
-      res.status(500).json({ error: error.message || "Failed to process file" });
+      res.status(500).json({ error: "Failed to process file" });
+    } finally {
+      // Security: Ensure uploaded file is always cleaned up to prevent disk exhaustion
+      if (fileToCleanUp && fileToCleanUp.path && fs.existsSync(fileToCleanUp.path)) {
+        try {
+          fs.unlinkSync(fileToCleanUp.path);
+        } catch (e) {
+          console.error("[RAG] Error cleaning up uploaded file:", e);
+        }
+      }
     }
   });
 
@@ -299,7 +311,7 @@ ${context}`
       res.json({ response: response.choices[0].message.content });
     } catch (error: any) {
       console.error("[RAG] Error processing query:", error);
-      res.status(500).json({ error: error.message || "Failed to process query" });
+      res.status(500).json({ error: "Failed to process query" });
     }
   });
 
