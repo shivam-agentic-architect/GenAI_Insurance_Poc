@@ -1,0 +1,5 @@
+
+## 2024-05-18 - [Fix DoS risk in file uploads and error info leaks]
+**Vulnerability:** The `/api/upload` endpoint used `multer` without a file size limit and handled file cleanup synchronously at the end of the success path. If an exception occurred during parsing or text extraction, the file was not deleted, leading to a possible DoS by exhausting disk space. Additionally, error handlers exposed internal `error.message` to clients.
+**Learning:** Temporary files created by `multer` must always be cleaned up in a `finally` block or dedicated cleanup middleware to prevent disk exhaustion, especially when file processing (like parsing PDFs) is prone to exceptions. Default limits for `multer` are unbound, leaving the server open to huge file uploads.
+**Prevention:** Always define limits (e.g., `limits: { fileSize: MAX_SIZE }`) when configuring `multer`. Wrap all temporary file processing logic in a `try...finally` block that strictly removes the file regardless of success or failure. Use generic error messages for 500 status codes.
