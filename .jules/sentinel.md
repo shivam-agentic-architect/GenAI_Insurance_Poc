@@ -1,0 +1,4 @@
+## 2025-02-27 - [MEDIUM] Fix information leakage in Python FastAPI ask endpoint
+**Vulnerability:** The `/ask` GET endpoint in the Python FastAPI backend (`app/main.py`) returned the raw exception string `str(e)` within the generic 500 error HTTPException payload, inadvertently exposing sensitive stack, environment, or system-level error details to the client on unexpected errors.
+**Learning:** Returning unhandled exception strings directly to the client creates an information leakage vulnerability (CWE-209). Exception details may contain database paths, internal configurations, or environment variables.
+**Prevention:** Instead of reflecting raw exception details back to the client, catch exceptions, log the raw details server-side (`traceback.format_exc()`), and return a generic error message (e.g., "An internal server error occurred while processing your request.") to the user.
