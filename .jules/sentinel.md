@@ -1,0 +1,4 @@
+## 2024-05-15 - Unbounded File Upload and Insecure Cleanup
+**Vulnerability:** The `/api/upload` endpoint used `multer` without a file size limit and lacked a `try...finally` block for temporary file cleanup.
+**Learning:** This could lead to resource exhaustion (DoS) through large file uploads. Moreover, if parsing or embedding failed, the uploaded temporary file would remain on the server, potentially leading to storage exhaustion over time. Error messages on failure were also returning raw `error.message`, which could leak information.
+**Prevention:** Always configure size limits when using `multer` (`limits: { fileSize: <limit> }`). When handling temporary files, always wrap the processing logic in a `try...finally` block to ensure `fs.unlinkSync` (or similar cleanup) is executed regardless of success or failure. Never return raw error messages to the client.
