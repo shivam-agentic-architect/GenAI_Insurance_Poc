@@ -1,0 +1,4 @@
+## 2025-03-09 - [HIGH] Fix DoS risk in file uploads and prevent error leakage
+**Vulnerability:** The application was vulnerable to disk exhaustion (DoS) because uploaded files might not be deleted if parsing failed (missing `finally` block). Furthermore, generic internal `error.message` texts were exposed to users upon failure.
+**Learning:** File upload endpoints must always clean up temp files inside a `finally` block to guarantee execution, even when errors arise during processing. Also, standard HTTP 500 responses should never return the raw error message to external clients to avoid information leakage.
+**Prevention:** Enforce strict file size limits on upload middleware (e.g., multer), use `try...finally` for temporary resources cleanup, and always sanitize generic catch-all errors before returning them to the user.
