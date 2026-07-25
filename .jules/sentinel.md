@@ -1,0 +1,4 @@
+## 2024-05-18 - [HIGH] Resource exhaustion and info leak in API endpoints
+**Vulnerability:** File uploads in `/api/upload` were missing a `finally` block to guarantee temporary file cleanup, risking disk exhaustion. Additionally, `multer` lacked a file size limit (DoS risk), and multiple API endpoints leaked raw error details (`error.message`) in 500 responses.
+**Learning:** Temporary files created by middlewares like `multer` must be explicitly deleted even if processing fails. Error handlers must abstract internal failures from client responses to avoid exposing infrastructure or code details.
+**Prevention:** Configure file size limits on upload middleware. Wrap file processing logic in `try...finally` to guarantee resource cleanup. Always return generic HTTP 500 error messages (e.g., "Internal server error") in catch blocks instead of raw exception details.
