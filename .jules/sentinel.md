@@ -1,0 +1,4 @@
+## 2024-05-24 - Temporary File Leak & Information Disclosure in File Uploads
+**Vulnerability:** The `/api/upload` endpoint could leave temporary files on disk if text extraction (like `pdf-parse`) or embedding failed, causing resource exhaustion (DoS). Additionally, `error.message` from generic catches in `/api/upload` and `/api/gpt/ask` was being sent back as a 500 status response, exposing internal stack traces/errors to the client.
+**Learning:** `multer` file uploads require a robust `try...finally` mechanism to ensure `fs.unlinkSync` happens regardless of where an exception is thrown in the processing pipeline. Generic catch blocks must sanitize errors sent to the client.
+**Prevention:** Always wrap temporary file processing in `try...finally` with a cleanup step. Never pass raw `error.message` into API error responses on 500 status codes.
