@@ -1,0 +1,4 @@
+## 2024-05-18 - Express Multer File Upload Exhaustion & 500 Error Leakage
+**Vulnerability:** The `/api/upload` endpoint in `server.ts` lacked a `multer` file size limit and failed to guarantee temporary file cleanup on disk via `fs.unlinkSync` if processing failed (e.g., malformed PDF), leading to potential disk exhaustion and DoS. Furthermore, 500 error handlers leaked internal `error.message` details to clients.
+**Learning:** Temporary files created by middlewares like `multer` MUST be cleaned up inside a `try...finally` block to ensure execution regardless of intermediate processing errors. Error responses must be genericized at the boundary layer.
+**Prevention:** Always set explicit limits on `multer` upload configurations. Implement defensive file system cleanup inside `finally` blocks for any temporary artifacts. Never pass raw `error.message` properties to client-facing HTTP response bodies.
