@@ -27,7 +27,10 @@ let documents: string[] = [];
 let docEmbeddings: number[][] = [];
 
 // Configure multer for file uploads
-const upload = multer({ dest: "uploads/" });
+const upload = multer({
+  dest: "uploads/",
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+});
 
 // Mock Insurance Data for the POC
 const insuranceData = {
@@ -210,12 +213,12 @@ async function startServer() {
 
   // File upload endpoint
   app.post("/api/upload", upload.single("file"), async (req, res) => {
-    try {
-      const file = req.file;
-      if (!file) {
-        return res.status(400).json({ error: "No file uploaded" });
-      }
+    const file = req.file;
+    if (!file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
 
+    try {
       let text = "";
       if (file.mimetype === "application/pdf") {
         const dataBuffer = fs.readFileSync(file.path);
@@ -249,13 +252,20 @@ async function startServer() {
         }
       }
 
-      // Clean up uploaded file
-      fs.unlinkSync(file.path);
-
       res.json({ message: "File uploaded and processed successfully", chunks: chunks.length });
     } catch (error: any) {
       console.error("[RAG] Error processing upload:", error);
-      res.status(500).json({ error: error.message || "Failed to process file" });
+      // Sentinel Fix: Generic error message to avoid info leakage
+      res.status(500).json({ error: "An error occurred while processing the file" });
+    } finally {
+      // Sentinel Fix: Ensure temp file is always cleaned up to prevent resource exhaustion
+      if (file && file.path && fs.existsSync(file.path)) {
+        try {
+          fs.unlinkSync(file.path);
+        } catch (cleanupError) {
+          console.error("[RAG] Failed to clean up uploaded file:", cleanupError);
+        }
+      }
     }
   });
 
@@ -299,7 +309,8 @@ ${context}`
       res.json({ response: response.choices[0].message.content });
     } catch (error: any) {
       console.error("[RAG] Error processing query:", error);
-      res.status(500).json({ error: error.message || "Failed to process query" });
+      // Sentinel Fix: Generic error message to avoid info leakage
+      res.status(500).json({ error: "An error occurred while processing the query" });
     }
   });
 
