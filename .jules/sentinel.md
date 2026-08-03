@@ -1,0 +1,4 @@
+## 2025-03-09 - [RAG Uploads] Unhandled Exceptions Causing Disk Exhaustion
+**Vulnerability:** The `/api/upload` endpoint processed file uploads for RAG embeddings but failed to guarantee the cleanup of temporary files (created by `multer`) if an error occurred during parsing, chunking, or embedding. Additionally, it lacked a file size limit.
+**Learning:** RAG pipelines dealing with file uploads and embeddings are prone to errors (e.g., API limits, unsupported formats). If temporary files aren't deleted in a `finally` block, they will accumulate and eventually exhaust server disk space, creating a Denial of Service (DoS) vulnerability.
+**Prevention:** Always wrap temporary file processing in a `try...finally` block to ensure cleanup via `fs.unlinkSync` happens regardless of success or failure. Also, enforce strict file size limits using the upload middleware (e.g., `multer`'s `limits: { fileSize: X }`).
