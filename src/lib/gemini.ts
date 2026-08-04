@@ -67,67 +67,31 @@ async function retryWithBackoff<T>(fn: () => Promise<T>, maxRetries = 3): Promis
 }
 
 export async function chat(message: string, history: any[] = []) {
-  const model = "gemini-flash-latest";
-  const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
-  
-  if (!apiKey || apiKey === "undefined") {
-    console.error("[GenAI] API Key is missing or undefined.");
-    throw new Error("API Key missing. Please ensure you have set your GEMINI_API_KEY in the project settings or environment variables.");
-  }
+  const generateResponse = async (reqBody: any) => {
+    const res = await fetch("/api/gemini/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(reqBody)
+    });
 
-  if (apiKey.startsWith("sk-")) {
-    throw new Error("Invalid API Key: An OpenAI key (sk-...) was provided for a Gemini request. Please use a Google AI API key (typically starts with 'AIza').");
-  }
-
-  const ai = new GoogleGenAI({ apiKey });
-  
-  const contents = [...history, { role: "user", parts: [{ text: message }] }];
-
-  const generateResponse = async (currentContents: any[]) => {
-    try {
-      const result = await ai.models.generateContent({
-        model,
-        contents: currentContents,
-        config: {
-          systemInstruction: `You are the GenAI Insurance Intelligence Assistant (POC). 
-          Your goal is to help insurance companies and partners interact with insurance data naturally.
-          You have access to a mock database of banks, products, policies, detailed documents, and FAQs.
-          
-          Comparison Capabilities:
-          - Use 'queryInsuranceDatabase' with queryType='compare' and a list of 'productIds' to retrieve specific products for side-by-side comparison.
-          - When a user asks to compare specific products, ALWAYS use this tool to get the most accurate details.
-          - Present the comparison in a clear, easy-to-read Markdown table.
-          
-          RAG (Retrieval-Augmented Generation) Capabilities:
-          - Use 'queryInsuranceDatabase' with queryType='documents' or 'faqs' to retrieve relevant text context for user questions.
-          - When a user asks about specific policy terms, claim processes, or general insurance questions (FAQs), ALWAYS retrieve the relevant documents first.
-          - Synthesize the retrieved information into a helpful, accurate response.
-          
-          Database Querying Capabilities:
-          - Use 'queryInsuranceDatabase' with queryType='banks', 'products', or 'policies' for structured data.
-          
-          Always be professional, concise, and data-driven. If you don't have specific data, state that it's a POC and the data is limited.`,
-          tools: [{ functionDeclarations: [queryInsuranceDatabase] }],
-        },
-      });
-      return result;
-    } catch (err: any) {
-      console.error("Gemini API Error:", err);
-      const errorMessage = err?.message || String(err);
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      const errorMessage = errorData.error || `HTTP error! status: ${res.status}`;
       
       if (errorMessage.includes("Forbidden") || errorMessage.includes("403")) {
-        throw new Error("Access Forbidden (403): The API key is either invalid, restricted, or does not have permission for the 'gemini-flash-latest' model. Please verify that 'Generative AI API' is enabled in your Google Cloud project and that the key is correctly configured in the Cloud Run environment variables.");
+        throw new Error("Access Forbidden (403): The API key is either invalid, restricted, or does not have permission.");
       }
-      
       if (errorMessage.includes("quota") || errorMessage.includes("429")) {
         throw new Error("Quota Exceeded (429): You have reached the rate limit for the Gemini API. Please wait a moment and try again.");
       }
 
-      throw err;
+      throw new Error(errorMessage);
     }
+
+    return await res.json();
   };
 
-  const response = await retryWithBackoff(() => generateResponse(contents));
+  const response = await retryWithBackoff(() => generateResponse({ message, history }));
 
   if (!response.candidates || response.candidates.length === 0) {
     console.error("No candidates returned from Gemini API. Response:", response);
@@ -210,24 +174,10 @@ export async function chat(message: string, history: any[] = []) {
       });
     }
 
-    const secondResponse = await retryWithBackoff(() => {
-      try {
-        return ai.models.generateContent({
-          model,
-          contents: [
-            ...contents,
-            response.candidates[0].content,
-            { role: "tool", parts: toolResponses }
-          ],
-          config: {
-            tools: [{ functionDeclarations: [queryInsuranceDatabase] }],
-          }
-        });
-      } catch (err) {
-        console.error("Gemini API Error (Second Call):", err);
-        throw err;
-      }
-    });
+    const previousContent = response.candidates[0].content;
+    const secondResponse = await retryWithBackoff(() =>
+      generateResponse({ message, history, toolResponses, previousContent })
+    );
 
     if (!secondResponse.candidates || secondResponse.candidates.length === 0) {
       console.error("No candidates returned from Gemini API (Second Call). Response:", secondResponse);

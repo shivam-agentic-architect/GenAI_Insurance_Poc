@@ -263,6 +263,123 @@ async function startServer() {
     res.json(insuranceData);
   });
 
+  app.post("/api/gemini/chat", async (req, res) => {
+    try {
+      const { message, history, toolResponses, previousContent } = req.body;
+
+      const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+      if (!apiKey || apiKey === "undefined") {
+        return res.status(500).json({ error: "API Key missing." });
+      }
+
+      if (apiKey.startsWith("sk-")) {
+        return res.status(500).json({ error: "Invalid API Key: OpenAI key provided." });
+      }
+
+      // We use dynamic import for @google/genai because it's only needed for this endpoint
+      const { GoogleGenAI, Type } = await import("@google/genai");
+
+      const queryInsuranceDatabase = {
+        name: "queryInsuranceDatabase",
+        parameters: {
+          type: Type.OBJECT,
+          description: "Queries the insurance database for banks, products, policy categories, detailed documents, and FAQs.",
+          properties: {
+            queryType: {
+              type: Type.STRING,
+              description: "The type of data to query: 'banks', 'products', 'policies', 'documents', 'faqs', or 'compare'.",
+              enum: ["banks", "products", "policies", "documents", "faqs", "compare"],
+            },
+            category: {
+              type: Type.STRING,
+              description: "Optional category filter (e.g., 'Health', 'Car', 'Life').",
+            },
+            region: {
+              type: Type.STRING,
+              description: "Optional region filter (e.g., 'Karnataka').",
+            },
+            searchTerm: {
+              type: Type.STRING,
+              description: "Optional search term for documents or FAQs.",
+            },
+            productIds: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING },
+              description: "List of product IDs to compare or fetch specifically.",
+            },
+          },
+          required: ["queryType"],
+        },
+      };
+
+      const ai = new GoogleGenAI({ apiKey });
+      const model = "gemini-flash-latest";
+
+      const baseConfig = {
+        systemInstruction: `You are the GenAI Insurance Intelligence Assistant (POC).
+        Your goal is to help insurance companies and partners interact with insurance data naturally.
+        You have access to a mock database of banks, products, policies, detailed documents, and FAQs.
+
+        Comparison Capabilities:
+        - Use 'queryInsuranceDatabase' with queryType='compare' and a list of 'productIds' to retrieve specific products for side-by-side comparison.
+        - When a user asks to compare specific products, ALWAYS use this tool to get the most accurate details.
+        - Present the comparison in a clear, easy-to-read Markdown table.
+
+        RAG (Retrieval-Augmented Generation) Capabilities:
+        - Use 'queryInsuranceDatabase' with queryType='documents' or 'faqs' to retrieve relevant text context for user questions.
+        - When a user asks about specific policy terms, claim processes, or general insurance questions (FAQs), ALWAYS retrieve the relevant documents first.
+        - Synthesize the retrieved information into a helpful, accurate response.
+
+        Database Querying Capabilities:
+        - Use 'queryInsuranceDatabase' with queryType='banks', 'products', or 'policies' for structured data.
+
+        Always be professional, concise, and data-driven. If you don't have specific data, state that it's a POC and the data is limited.`,
+        tools: [{ functionDeclarations: [queryInsuranceDatabase] }],
+      };
+
+      let contents = [];
+      if (toolResponses) {
+         contents = [
+           ...(history || []),
+           { role: "user", parts: [{ text: message }] },
+           previousContent,
+           { role: "tool", parts: toolResponses }
+         ];
+      } else {
+         contents = [...(history || []), { role: "user", parts: [{ text: message }] }];
+      }
+
+      const result = await ai.models.generateContent({
+        model,
+        contents,
+        config: baseConfig
+      });
+
+      // We must serialize the response properly, as the frontend expects a `text` attribute
+      // for standard responses or `functionCalls` for tool calls.
+      const hasFunctionCalls = result.functionCalls && result.functionCalls.length > 0;
+
+      if (hasFunctionCalls) {
+        res.json({
+          candidates: result.candidates,
+          functionCalls: result.functionCalls.map(c => ({
+            name: c.name,
+            args: c.args
+          }))
+        });
+      } else {
+        res.json({
+          candidates: result.candidates,
+          text: result.text
+        });
+      }
+
+    } catch (error: any) {
+      console.error("[Gemini] Error processing chat:", error);
+      res.status(500).json({ error: error.message || "Failed to process query" });
+    }
+  });
+
   app.get("/api/gpt/ask", async (req, res) => {
     try {
       const q = req.query.q as string;
