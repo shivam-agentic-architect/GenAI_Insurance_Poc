@@ -1,0 +1,4 @@
+## 2024-05-18 - [MEDIUM] Insecure file upload and info leakage
+**Vulnerability:** Insecure file upload via missing size limits and unhandled early returns causing skipped file cleanup, leading to resource exhaustion. Info leakage via exposed `error.message` in 500 error responses in Express and FastAPI routes.
+**Learning:** Returning early or throwing errors in file upload handlers without a `finally` block leaves temporary files uncleaned, which is a DOS vector. Hardcoding specific error properties directly to users exposes internal stack and implementation details.
+**Prevention:** Always wrap temporary file processing in a `try...finally` block to guarantee `fs.unlinkSync` execution regardless of early returns or exceptions. Add file size limits to `multer` configuration. Return generic `"An internal error occurred"` messages for 500 status codes.
