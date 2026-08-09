@@ -87,6 +87,9 @@ Rules:
         if "AuthenticationError" in error_details or "401" in error_msg:
             status_code = 401
             error_msg = "Invalid OpenAI API Key. Please check your .env file."
+        else:
+            # Overwrite the detailed error message for 500 errors to prevent information leakage
+            error_msg = "An internal server error occurred."
             
         raise HTTPException(status_code=status_code, detail=error_msg)
 
