@@ -1,0 +1,4 @@
+## 2025-03-09 - [Fix information leakage and resource exhaustion]
+**Vulnerability:** The application was susceptible to Denial of Service (DoS) due to unlimited file upload sizes in `multer`. It also lacked proper cleanup of temporary files via a `try...finally` block, leading to potential disk exhaustion. Additionally, HTTP 500 error responses were exposing internal `error.message` attributes, presenting an information leakage risk.
+**Learning:** Security by default is crucial. Tools like `multer` require explicit file size configurations. When handling files on disk, cleanup procedures must be guaranteed using `finally` blocks to account for failure scenarios. Server errors should never propagate to the client with internal context.
+**Prevention:** Always set explicit limits on file uploads (e.g., `fileSize` in `multer`). Employ `try...finally` blocks for reliable resource cleanup. Sanitize error messages in catch blocks returning 5xx statuses to clients.
