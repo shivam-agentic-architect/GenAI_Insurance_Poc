@@ -1,0 +1,4 @@
+## 2025-03-09 - [Upload Endpoint File Handling and Information Leakage]
+**Vulnerability:** The `/api/upload` endpoint had unbounded `multer` upload limits and missing guaranteed cleanup logic (if an error occurred during embedding). Further, raw error traces (`error.message`) were leaked in `catch` blocks for generic 500 status responses for both `/api/upload` and `/api/gpt/ask`.
+**Learning:** Resource exhaustion vectors exist if endpoints aren't strictly bounded, and failing to use a `finally` block for cleanup of temporary processing files can cause slow storage bloat. Leaking internal error structures exposes backend mechanics.
+**Prevention:** Always enforce `limits` in multer config (e.g. `limits: { fileSize: 5 * 1024 * 1024 }`), use `try...finally` to ensure `fs.unlinkSync` happens unconditionally, and return generic messages for unexpected server errors.
