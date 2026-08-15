@@ -27,7 +27,7 @@ let documents: string[] = [];
 let docEmbeddings: number[][] = [];
 
 // Configure multer for file uploads
-const upload = multer({ dest: "uploads/" });
+const upload = multer({ dest: "uploads/", limits: { fileSize: 5 * 1024 * 1024 } });
 
 // Mock Insurance Data for the POC
 const insuranceData = {
@@ -216,46 +216,50 @@ async function startServer() {
         return res.status(400).json({ error: "No file uploaded" });
       }
 
-      let text = "";
-      if (file.mimetype === "application/pdf") {
-        const dataBuffer = fs.readFileSync(file.path);
-        const parser = new PDFParse({ data: dataBuffer });
-        const data = await parser.getText();
-        text = data.text;
-        await parser.destroy();
-      } else if (file.mimetype === "text/plain") {
-        text = fs.readFileSync(file.path, "utf-8");
-      } else {
-        return res.status(400).json({ error: "Unsupported file type. Please upload .txt or .pdf" });
-      }
+      try {
+        let text = "";
+        if (file.mimetype === "application/pdf") {
+          const dataBuffer = fs.readFileSync(file.path);
+          const parser = new PDFParse({ data: dataBuffer });
+          const data = await parser.getText();
+          text = data.text;
+          await parser.destroy();
+        } else if (file.mimetype === "text/plain") {
+          text = fs.readFileSync(file.path, "utf-8");
+        } else {
+          return res.status(400).json({ error: "Unsupported file type. Please upload .txt or .pdf" });
+        }
 
-      if (!text.trim()) {
-        return res.status(400).json({ error: "File is empty or could not extract text" });
-      }
+        if (!text.trim()) {
+          return res.status(400).json({ error: "File is empty or could not extract text" });
+        }
 
-      // Split text into chunks (simple split by double newline for now)
-      const chunks = text.split(/\n\s*\n/).filter(c => c.trim().length > 20);
-      
-      console.log(`[RAG] Adding ${chunks.length} new chunks from uploaded file: ${file.originalname}`);
-      
-      for (const chunk of chunks) {
-        const docText = `[Uploaded: ${file.originalname}] ${chunk.trim()}`;
-        documents.push(docText);
-        try {
-          const emb = await getEmbedding(docText);
-          docEmbeddings.push(emb);
-        } catch (e) {
-          console.error(`Error embedding chunk: ${e}`);
+        // Split text into chunks (simple split by double newline for now)
+        const chunks = text.split(/\n\s*\n/).filter(c => c.trim().length > 20);
+
+        console.log(`[RAG] Adding ${chunks.length} new chunks from uploaded file: ${file.originalname}`);
+
+        for (const chunk of chunks) {
+          const docText = `[Uploaded: ${file.originalname}] ${chunk.trim()}`;
+          documents.push(docText);
+          try {
+            const emb = await getEmbedding(docText);
+            docEmbeddings.push(emb);
+          } catch (e) {
+            console.error(`Error embedding chunk: ${e}`);
+          }
+        }
+
+        res.json({ message: "File uploaded and processed successfully", chunks: chunks.length });
+      } finally {
+        // Clean up uploaded file
+        if (file && fs.existsSync(file.path)) {
+          fs.unlinkSync(file.path);
         }
       }
-
-      // Clean up uploaded file
-      fs.unlinkSync(file.path);
-
-      res.json({ message: "File uploaded and processed successfully", chunks: chunks.length });
     } catch (error: any) {
       console.error("[RAG] Error processing upload:", error);
-      res.status(500).json({ error: error.message || "Failed to process file" });
+      res.status(500).json({ error: "Failed to process file" });
     }
   });
 
@@ -299,7 +303,7 @@ ${context}`
       res.json({ response: response.choices[0].message.content });
     } catch (error: any) {
       console.error("[RAG] Error processing query:", error);
-      res.status(500).json({ error: error.message || "Failed to process query" });
+      res.status(500).json({ error: "Failed to process query" });
     }
   });
 
