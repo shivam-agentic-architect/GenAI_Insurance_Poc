@@ -208,6 +208,26 @@ async function startServer() {
     res.json({ status: "ok" });
   });
 
+  // Auth endpoint
+  app.post("/api/login", (req, res) => {
+    const { username, password } = req.body;
+
+    // Secure validation against server-side environment variables
+    const validUsername = process.env.ADMIN_USERNAME;
+    const validPassword = process.env.ADMIN_PASSWORD;
+
+    if (!validUsername || !validPassword) {
+      console.error("Authentication rejected: ADMIN_USERNAME or ADMIN_PASSWORD not configured on server.");
+      return res.status(500).json({ error: "Server misconfiguration" });
+    }
+
+    if (username === validUsername && password === validPassword) {
+      res.json({ success: true });
+    } else {
+      res.status(401).json({ error: "Invalid credentials" });
+    }
+  });
+
   // File upload endpoint
   app.post("/api/upload", upload.single("file"), async (req, res) => {
     try {
