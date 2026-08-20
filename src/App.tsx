@@ -59,13 +59,34 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (username === "shivam" && password === "charan1") {
-      setIsLoggedIn(true);
-      setLoginError("");
-    } else {
-      setLoginError("Invalid username or password");
+    setIsLoggingIn(true);
+    setLoginError("");
+
+    try {
+      const response = await fetch("/api/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username, password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setIsLoggedIn(true);
+      } else {
+        setLoginError(data.error || "Invalid username or password");
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      setLoginError("An error occurred during login. Please try again.");
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -265,9 +286,17 @@ export default function App() {
 
             <button
               type="submit"
-              className="w-full py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20"
+                disabled={isLoggingIn}
+                className="w-full py-3 px-4 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              Sign In
+                {isLoggingIn ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Signing In...
+                  </>
+                ) : (
+                  "Sign In"
+                )}
             </button>
           </form>
 
