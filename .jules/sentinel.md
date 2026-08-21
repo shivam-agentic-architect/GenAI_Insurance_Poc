@@ -1,0 +1,4 @@
+## 2025-02-28 - Removed hardcoded client-side admin credentials
+**Vulnerability:** Found hardcoded admin login credentials (`shivam` / `charan1`) embedded directly in the frontend application code (`src/App.tsx`). This exposes the application to unauthorized access by anyone who inspects the frontend bundle.
+**Learning:** Client-side authentication logic is inherently insecure as it relies entirely on the client being honest, and exposing administrative credentials within client code makes it trivial to bypass access controls.
+**Prevention:** Always perform authentication on the server-side, fetching credentials directly from secure environment variables (`ADMIN_USERNAME`, `ADMIN_PASSWORD`), and never hardcode fallback values. The client should only send credentials to an API endpoint (`/api/login`) which returns a success or failure status.
