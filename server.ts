@@ -208,6 +208,24 @@ async function startServer() {
     res.json({ status: "ok" });
   });
 
+  // Authentication endpoint
+  app.post("/api/login", (req, res) => {
+    const { username, password } = req.body;
+    const validUsername = process.env.ADMIN_USERNAME;
+    const validPassword = process.env.ADMIN_PASSWORD;
+
+    if (!validUsername || !validPassword) {
+      console.error("[Auth] Missing server credentials in environment");
+      return res.status(500).json({ error: "Internal server configuration error" });
+    }
+
+    if (username === validUsername && password === validPassword) {
+      res.json({ success: true });
+    } else {
+      res.status(401).json({ error: "Invalid username or password" });
+    }
+  });
+
   // File upload endpoint
   app.post("/api/upload", upload.single("file"), async (req, res) => {
     try {
