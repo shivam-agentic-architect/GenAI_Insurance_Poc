@@ -208,6 +208,25 @@ async function startServer() {
     res.json({ status: "ok" });
   });
 
+  app.post("/api/login", (req, res) => {
+    const { username, password } = req.body;
+
+    // Sentinel: Authenticate against server-side environment variables. No hardcoded fallback.
+    const adminUser = process.env.ADMIN_USERNAME;
+    const adminPass = process.env.ADMIN_PASSWORD;
+
+    if (!adminUser || !adminPass) {
+      console.error("[Auth] Missing ADMIN_USERNAME or ADMIN_PASSWORD in environment.");
+      return res.status(500).json({ error: "Server misconfiguration. Authentication unavailable." });
+    }
+
+    if (username === adminUser && password === adminPass) {
+      return res.json({ success: true, message: "Authentication successful" });
+    }
+
+    return res.status(401).json({ error: "Invalid username or password" });
+  });
+
   // File upload endpoint
   app.post("/api/upload", upload.single("file"), async (req, res) => {
     try {
