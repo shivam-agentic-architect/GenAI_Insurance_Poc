@@ -1,0 +1,4 @@
+## 2024-05-15 - [CRITICAL] Fix hardcoded client-side credentials
+**Vulnerability:** The application had hardcoded admin credentials (`shivam`/`charan1`) in the client-side React code (`src/App.tsx`). Anyone inspecting the frontend code could easily find and extract these credentials, allowing unauthorized access.
+**Learning:** Never store sensitive authentication credentials or validation logic directly in the client bundle. The client code is always accessible to users. Authentication state and validation must always occur securely on the backend server.
+**Prevention:** Implement a secure backend authentication endpoint (`/api/login`) that compares incoming credentials against server-side environment variables (`ADMIN_USERNAME` and `ADMIN_PASSWORD`), completely abstracting this process from the frontend.
