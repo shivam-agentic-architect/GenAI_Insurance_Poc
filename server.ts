@@ -204,6 +204,22 @@ async function startServer() {
   app.use(express.json());
 
   // API routes
+app.post("/api/login", (req, res) => {
+    const { username, password } = req.body;
+
+    // In a real app, do not use simple strict equality without hashing, but for POC this secures it server-side.
+    if (
+      username &&
+      password &&
+      username === process.env.ADMIN_USERNAME &&
+      password === process.env.ADMIN_PASSWORD
+    ) {
+      res.json({ success: true });
+    } else {
+      res.status(401).json({ error: "Invalid username or password" });
+    }
+  });
+
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
   });
