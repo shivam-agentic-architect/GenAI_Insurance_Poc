@@ -20,7 +20,6 @@ import {
   CheckCircle2,
   LogOut
 } from "lucide-react";
-import { chat, getInsuranceData } from "./lib/gemini";
 
 interface Message {
   role: "user" | "model";
@@ -163,7 +162,14 @@ export default function App() {
           parts: [{ text: m.text }],
         }));
 
-        const response = await chat(textToSend, history);
+        const apiResponse = await fetch("/api/gemini/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: textToSend, history }),
+        });
+        const data = await apiResponse.json();
+        if (!apiResponse.ok) throw new Error(data.error || "Gemini service error");
+        const response = { text: data.text };
         modelText = response.text || "I'm sorry, I couldn't process that request.";
       } else {
         // Call Python GPT API via Express proxy
