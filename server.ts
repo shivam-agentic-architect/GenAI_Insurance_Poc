@@ -1,3 +1,5 @@
+import { GoogleGenAI } from "@google/genai";
+import { Type, FunctionDeclaration } from "@google/genai";
 import "dotenv/config";
 import express from "express";
 import { createServer as createViteServer } from "vite";
@@ -259,6 +261,216 @@ async function startServer() {
     }
   });
 
+
+
+  app.post("/api/gemini/chat", async (req, res) => {
+    try {
+      const { message, history } = req.body;
+      if (!message) {
+        return res.status(400).json({ error: "Message is required" });
+      }
+
+      const model = "gemini-flash-latest";
+      const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+
+      if (!apiKey || apiKey === "undefined") {
+        console.error("[GenAI] API Key is missing or undefined.");
+        return res.status(500).json({ error: "API Key missing." });
+      }
+
+      if (apiKey.startsWith("sk-")) {
+        return res.status(500).json({ error: "Invalid API Key: OpenAI key provided for Gemini." });
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
+      const contents = [...(history || []), { role: "user", parts: [{ text: message }] }];
+
+      const queryInsuranceDatabase: FunctionDeclaration = {
+        name: "queryInsuranceDatabase",
+        parameters: {
+          type: Type.OBJECT,
+          description: "Queries the insurance database for banks, products, policy categories, detailed documents, and FAQs.",
+          properties: {
+            queryType: {
+              type: Type.STRING,
+              description: "The type of data to query: 'banks', 'products', 'policies', 'documents', 'faqs', or 'compare'.",
+              enum: ["banks", "products", "policies", "documents", "faqs", "compare"],
+            },
+            category: {
+              type: Type.STRING,
+              description: "Optional category filter (e.g., 'Health', 'Car', 'Life').",
+            },
+            region: {
+              type: Type.STRING,
+              description: "Optional region filter (e.g., 'Karnataka').",
+            },
+            searchTerm: {
+              type: Type.STRING,
+              description: "Optional search term for documents or FAQs.",
+            },
+            productIds: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING },
+              description: "List of product IDs to compare or fetch specifically.",
+            },
+          },
+          required: ["queryType"],
+        },
+      };
+
+
+      const retryWithBackoff = async (fn, maxRetries = 3) => {
+        let delay = 1000;
+        for (let i = 0; i < maxRetries; i++) {
+          try {
+            return await fn();
+          } catch (error) {
+            const isRateLimit = error?.message?.includes("429") || error?.status === 429 || error?.message?.includes("RESOURCE_EXHAUSTED");
+            if (isRateLimit && i < maxRetries - 1) {
+              console.warn(`Rate limit hit, retrying in ${delay}ms...`);
+              await new Promise(resolve => setTimeout(resolve, delay));
+              delay *= 2;
+              continue;
+            }
+            throw error;
+          }
+        }
+        throw new Error("Max retries exceeded");
+      };
+
+      const generateResponse = async (currentContents) => {
+        return await ai.models.generateContent({
+          model,
+          contents: currentContents,
+          config: {
+            systemInstruction: `You are the GenAI Insurance Intelligence Assistant (POC).
+            Your goal is to help insurance companies and partners interact with insurance data naturally.
+            You have access to a mock database of banks, products, policies, detailed documents, and FAQs.
+
+            Comparison Capabilities:
+            - Use 'queryInsuranceDatabase' with queryType='compare' and a list of 'productIds' to retrieve specific products for side-by-side comparison.
+            - When a user asks to compare specific products, ALWAYS use this tool to get the most accurate details.
+            - Present the comparison in a clear, easy-to-read Markdown table.
+
+            RAG (Retrieval-Augmented Generation) Capabilities:
+            - Use 'queryInsuranceDatabase' with queryType='documents' or 'faqs' to retrieve relevant text context for user questions.
+            - When a user asks about specific policy terms, claim processes, or general insurance questions (FAQs), ALWAYS retrieve the relevant documents first.
+            - Synthesize the retrieved information into a helpful, accurate response.
+
+            Database Querying Capabilities:
+            - Use 'queryInsuranceDatabase' with queryType='banks', 'products', or 'policies' for structured data.
+
+            Always be professional, concise, and data-driven. If you don't have specific data, state that it's a POC and the data is limited.`,
+            tools: [{ functionDeclarations: [queryInsuranceDatabase] }],
+          },
+        });
+      };
+
+      let response = await retryWithBackoff(() => generateResponse(contents));
+
+      if (!response.candidates || response.candidates.length === 0) {
+        return res.status(500).json({ error: "No response from AI" });
+      }
+
+      if (response.functionCalls && response.functionCalls.length > 0) {
+        const data = insuranceData;
+        const toolResponses = [];
+
+        for (const call of response.functionCalls) {
+          const { queryType, category, region, searchTerm, productIds } = call.args as any;
+          let content: any = null;
+
+          try {
+            if (queryType === "banks") {
+              let filteredBanks = data.banks;
+              if (region) {
+                filteredBanks = filteredBanks.filter(b =>
+                  b.regions.includes(region) || b.regions.includes("All India")
+                );
+              }
+              if (category) {
+                const bankIdsWithCategory = data.products
+                  .filter(p => p.category.toLowerCase() === category.toLowerCase())
+                  .map(p => p.bankId);
+                filteredBanks = filteredBanks.filter(b => bankIdsWithCategory.includes(b.id));
+              }
+              content = filteredBanks;
+            } else if (queryType === "products") {
+              let filteredProducts = data.products;
+              if (category) {
+                filteredProducts = filteredProducts.filter(p => p.category.toLowerCase() === category.toLowerCase());
+              }
+              content = filteredProducts;
+            } else if (queryType === "compare") {
+              let filteredProducts = data.products;
+              if (productIds && productIds.length > 0) {
+                filteredProducts = filteredProducts.filter(p => productIds.includes(p.id));
+              }
+              content = filteredProducts.map(p => ({
+                ...p,
+                bankName: data.banks.find(b => b.id === p.bankId)?.name || "Unknown Bank"
+              }));
+            } else if (queryType === "policies") {
+              let filteredPolicies = data.policies;
+              if (category) {
+                filteredPolicies = filteredPolicies.filter(p => p.category.toLowerCase() === category.toLowerCase());
+              }
+              content = filteredPolicies;
+            } else if (queryType === "documents") {
+              let filteredDocs = data.documents;
+              if (searchTerm) {
+                const term = searchTerm.toLowerCase();
+                filteredDocs = filteredDocs.filter(d =>
+                  d.title.toLowerCase().includes(term) || d.content.toLowerCase().includes(term)
+                );
+              }
+              content = filteredDocs;
+            } else if (queryType === "faqs") {
+              let filteredFaqs = data.faqs;
+              if (searchTerm) {
+                const term = searchTerm.toLowerCase();
+                filteredFaqs = filteredFaqs.filter(f =>
+                  f.question.toLowerCase().includes(term) || f.answer.toLowerCase().includes(term)
+                );
+              }
+              content = filteredFaqs;
+            }
+          } catch (err) {
+            console.error("Error processing tool call:", err);
+            content = { error: "Failed to fetch data from database" };
+          }
+
+          toolResponses.push({
+            functionResponse: {
+              name: call.name,
+              response: { content }
+            }
+          });
+        }
+
+        response = await retryWithBackoff(() => ai.models.generateContent({
+          model,
+          contents: [
+            ...contents,
+            response.candidates[0].content,
+            { role: "tool", parts: toolResponses }
+          ],
+          config: {
+            tools: [{ functionDeclarations: [queryInsuranceDatabase] }],
+          }
+        }));
+
+        if (!response.candidates || response.candidates.length === 0) {
+          return res.status(500).json({ error: "No response from AI after tool call" });
+        }
+      }
+
+      res.json(response);
+    } catch (error) {
+      console.error("[GenAI] Error processing query:", error);
+      res.status(500).json({ error: error.message || "Failed to process query" });
+    }
+  });
   app.get("/api/insurance-data", (req, res) => {
     res.json(insuranceData);
   });
