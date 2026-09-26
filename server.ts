@@ -27,7 +27,7 @@ let documents: string[] = [];
 let docEmbeddings: number[][] = [];
 
 // Configure multer for file uploads
-const upload = multer({ dest: "uploads/" });
+const upload = multer({ dest: "uploads/", limits: { fileSize: 5 * 1024 * 1024 } });
 
 // Mock Insurance Data for the POC
 const insuranceData = {
@@ -210,12 +210,12 @@ async function startServer() {
 
   // File upload endpoint
   app.post("/api/upload", upload.single("file"), async (req, res) => {
-    try {
-      const file = req.file;
-      if (!file) {
-        return res.status(400).json({ error: "No file uploaded" });
-      }
+    const file = req.file;
+    if (!file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
 
+    try {
       let text = "";
       if (file.mimetype === "application/pdf") {
         const dataBuffer = fs.readFileSync(file.path);
@@ -226,11 +226,13 @@ async function startServer() {
       } else if (file.mimetype === "text/plain") {
         text = fs.readFileSync(file.path, "utf-8");
       } else {
-        return res.status(400).json({ error: "Unsupported file type. Please upload .txt or .pdf" });
+        res.status(400).json({ error: "Unsupported file type. Please upload .txt or .pdf" });
+        return;
       }
 
       if (!text.trim()) {
-        return res.status(400).json({ error: "File is empty or could not extract text" });
+        res.status(400).json({ error: "File is empty or could not extract text" });
+        return;
       }
 
       // Split text into chunks (simple split by double newline for now)
@@ -249,13 +251,14 @@ async function startServer() {
         }
       }
 
-      // Clean up uploaded file
-      fs.unlinkSync(file.path);
-
       res.json({ message: "File uploaded and processed successfully", chunks: chunks.length });
     } catch (error: any) {
       console.error("[RAG] Error processing upload:", error);
-      res.status(500).json({ error: error.message || "Failed to process file" });
+      res.status(500).json({ error: "Failed to process file" });
+    } finally {
+      if (fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
     }
   });
 
