@@ -80,11 +80,13 @@ Rules:
         error_details = traceback.format_exc()
         print(f"❌ Error in ask endpoint:\n{error_details}")
         
-        # If it's an OpenAI error, try to extract the message
-        error_msg = str(e)
+        # Default generic error message to prevent information leakage
+        error_msg = "An internal server error occurred."
         status_code = 500
         
-        if "AuthenticationError" in error_details or "401" in error_msg:
+        # We can still specifically match 401 errors using stringified exception details
+        # since we don't return the raw exception string.
+        if "AuthenticationError" in error_details or "401" in str(e):
             status_code = 401
             error_msg = "Invalid OpenAI API Key. Please check your .env file."
             
