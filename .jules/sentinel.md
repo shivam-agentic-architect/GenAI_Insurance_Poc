@@ -1,0 +1,4 @@
+## 2024-10-08 - [Hardcoded API Key Exposure in Vite]
+**Vulnerability:** The Gemini API key was hardcoded into the frontend bundle using Vite's `define` configuration, exposing the sensitive secret directly to the client browser.
+**Learning:** Removing an API key from the frontend bundle can introduce a severe functional regression (app crash) if the client code is not updated to handle the missing environment variable gracefully.
+**Prevention:** When removing a hardcoded secret, always verify the client-side code that consumes the secret. Implement safe fallback logic (`typeof process !== 'undefined'`) or point to a secure backend proxy to prevent crashing the application while fixing the vulnerability.
