@@ -255,7 +255,10 @@ async function startServer() {
       res.json({ message: "File uploaded and processed successfully", chunks: chunks.length });
     } catch (error: any) {
       console.error("[RAG] Error processing upload:", error);
-      res.status(500).json({ error: error.message || "Failed to process file" });
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+      res.status(500).json({ error: "Failed to process file" }); // Sentinel: Do not leak error message details
     }
   });
 
