@@ -27,7 +27,10 @@ let documents: string[] = [];
 let docEmbeddings: number[][] = [];
 
 // Configure multer for file uploads
-const upload = multer({ dest: "uploads/" });
+const upload = multer({
+  dest: "uploads/",
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+});
 
 // Mock Insurance Data for the POC
 const insuranceData = {
