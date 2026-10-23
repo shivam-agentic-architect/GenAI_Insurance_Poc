@@ -249,13 +249,16 @@ async function startServer() {
         }
       }
 
-      // Clean up uploaded file
-      fs.unlinkSync(file.path);
-
       res.json({ message: "File uploaded and processed successfully", chunks: chunks.length });
     } catch (error: any) {
       console.error("[RAG] Error processing upload:", error);
-      res.status(500).json({ error: error.message || "Failed to process file" });
+      // Security: Do not leak error details
+      res.status(500).json({ error: "Failed to process file" });
+    } finally {
+      // Security: Always clean up uploaded file to prevent DoS via disk exhaustion
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
     }
   });
 
@@ -299,7 +302,8 @@ ${context}`
       res.json({ response: response.choices[0].message.content });
     } catch (error: any) {
       console.error("[RAG] Error processing query:", error);
-      res.status(500).json({ error: error.message || "Failed to process query" });
+      // Security: Do not leak error details
+      res.status(500).json({ error: "Failed to process query" });
     }
   });
 
