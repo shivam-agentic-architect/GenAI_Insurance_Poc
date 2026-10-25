@@ -1,0 +1,4 @@
+## 2025-02-23 - [MEDIUM] Insecure File Upload Cleanup & Information Leak
+**Vulnerability:** Temporary files uploaded via multer were only cleaned up at the end of the `try` block in `/api/upload` (`server.ts`). If an error occurred during PDF text extraction or embedding generation, the code skipped the cleanup step, potentially leading to disk exhaustion (DoS). Additionally, the 500 error response leaked internal error messages `error.message`.
+**Learning:** File cleanup in Node.js endpoints handling uploads must always occur in a `finally` block to guarantee execution regardless of preceding processing errors.
+**Prevention:** Always wrap file processing logic in a `try...catch...finally` construct when dealing with temporary uploads. Use `fs.existsSync` in the `finally` block to safely remove the file. Ensure 500 error responses are generic and do not leak `error.message`.
