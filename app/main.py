@@ -86,9 +86,11 @@ Rules:
         
         if "AuthenticationError" in error_details or "401" in error_msg:
             status_code = 401
-            error_msg = "Invalid OpenAI API Key. Please check your .env file."
+            client_error_msg = "Invalid OpenAI API Key. Please check your .env file."
+        else:
+            client_error_msg = "An internal server error occurred while processing your request."
             
-        raise HTTPException(status_code=status_code, detail=error_msg)
+        raise HTTPException(status_code=status_code, detail=client_error_msg)
 
 if __name__ == "__main__":
     import uvicorn
