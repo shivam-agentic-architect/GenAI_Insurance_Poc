@@ -2,7 +2,8 @@ import { GoogleGenAI, Type, FunctionDeclaration, GenerateContentResponse } from 
 
 export const getInsuranceData = async () => {
   try {
-    const response = await fetch("/api/insurance-data");
+    const baseUrl = typeof window !== "undefined" ? "" : "http://localhost:3000";
+    const response = await fetch(`${baseUrl}/api/insurance-data`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -68,7 +69,7 @@ async function retryWithBackoff<T>(fn: () => Promise<T>, maxRetries = 3): Promis
 
 export async function chat(message: string, history: any[] = []) {
   const model = "gemini-flash-latest";
-  const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+  const apiKey = typeof process !== "undefined" && process.env ? (process.env.GEMINI_API_KEY || process.env.API_KEY) : undefined;
   
   if (!apiKey || apiKey === "undefined") {
     console.error("[GenAI] API Key is missing or undefined.");

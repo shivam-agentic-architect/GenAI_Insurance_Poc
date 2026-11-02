@@ -259,6 +259,18 @@ async function startServer() {
     }
   });
 
+  app.post("/api/gemini/chat", async (req, res) => {
+    try {
+      const { message, history } = req.body;
+      const { chat } = await import("./src/lib/gemini.ts");
+      const result = await chat(message, history);
+      res.json({ text: result.text || "" });
+    } catch (e: any) {
+      console.error("[Gemini] Error processing chat:", e);
+      res.status(500).json({ error: e.message || "Failed to process chat" });
+    }
+  });
+
   app.get("/api/insurance-data", (req, res) => {
     res.json(insuranceData);
   });
