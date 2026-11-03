@@ -27,7 +27,10 @@ let documents: string[] = [];
 let docEmbeddings: number[][] = [];
 
 // Configure multer for file uploads
-const upload = multer({ dest: "uploads/" });
+const upload = multer({
+  dest: "uploads/",
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+});
 
 // Mock Insurance Data for the POC
 const insuranceData = {
@@ -210,11 +213,13 @@ async function startServer() {
 
   // File upload endpoint
   app.post("/api/upload", upload.single("file"), async (req, res) => {
+    let uploadedFilePath: string | undefined;
     try {
       const file = req.file;
       if (!file) {
         return res.status(400).json({ error: "No file uploaded" });
       }
+      uploadedFilePath = file.path;
 
       let text = "";
       if (file.mimetype === "application/pdf") {
@@ -249,13 +254,20 @@ async function startServer() {
         }
       }
 
-      // Clean up uploaded file
-      fs.unlinkSync(file.path);
-
       res.json({ message: "File uploaded and processed successfully", chunks: chunks.length });
     } catch (error: any) {
       console.error("[RAG] Error processing upload:", error);
-      res.status(500).json({ error: error.message || "Failed to process file" });
+      // Ensure we don't leak stack traces in errors
+      res.status(500).json({ error: "Failed to process file" });
+    } finally {
+      // Ensure file is always cleaned up, even on errors
+      if (uploadedFilePath && fs.existsSync(uploadedFilePath)) {
+        try {
+          fs.unlinkSync(uploadedFilePath);
+        } catch (cleanupError) {
+          console.error("Failed to clean up uploaded file:", cleanupError);
+        }
+      }
     }
   });
 
