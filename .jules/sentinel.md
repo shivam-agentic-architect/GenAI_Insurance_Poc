@@ -1,0 +1,4 @@
+## 2024-05-18 - [Exposed Gemini API Key via Vite Config]
+**Vulnerability:** The `GEMINI_API_KEY` was being dynamically injected into the client-side bundle via the `define` property in `vite.config.ts`. This allowed the frontend to execute API calls but exposed the raw API key to the browser in plaintext, which is a critical risk for billing and quota abuse.
+**Learning:** The architectural assumption was that defining process.env keys in Vite config is safe for local development or closed deployments, but this permanently compromises the key because the compiler hardcodes it into the output chunk.
+**Prevention:** Always implement AI SDK interactions via a backend proxy route (e.g., `/api/gemini/chat` in `server.ts`) where the secret keys can be read directly from the server's environment `process.env` at runtime, completely isolating them from the client browser.
