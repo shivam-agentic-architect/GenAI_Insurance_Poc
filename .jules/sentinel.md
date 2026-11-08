@@ -1,0 +1,4 @@
+## 2025-02-28 - [CRITICAL] Prevent GEMINI_API_KEY Exposure in Client Bundle
+**Vulnerability:** The `GEMINI_API_KEY` was being hardcoded into the Vite client bundle via `vite.config.ts`'s `define` property. `src/lib/gemini.ts` was invoking the `@google/genai` API directly from the client frontend, exposing the secret key to all users.
+**Learning:** Statically injecting environment variables into client bundles exposes them fully to the user. AI SDKs meant for secure backends must not be used on the client. Returning plain objects from backend proxies can sometimes break frontend assumptions if not mapped correctly, but mapping correctly maintains compatibility while preserving security.
+**Prevention:** All LLM API calls must be proxied through the secure backend (e.g., via `/api/gemini/chat`). Sensitive credentials like API keys must only be accessed in Node.js server scripts and must never be defined in build tools targeting the frontend.
