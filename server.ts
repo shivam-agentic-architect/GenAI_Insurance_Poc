@@ -7,6 +7,7 @@ import fs from "fs";
 import OpenAI from "openai";
 import multer from "multer";
 import * as pdfParse from "pdf-parse";
+import { GoogleGenAI } from "@google/genai";
 const { PDFParse } = pdfParse;
 
 let openaiClient: OpenAI | null = null;
@@ -206,6 +207,22 @@ async function startServer() {
   // API routes
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
+  });
+
+  // Gemini Proxy
+  app.post("/api/gemini/generate", async (req, res) => {
+    try {
+      const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ error: "Server missing Gemini API Key" });
+      }
+      const ai = new GoogleGenAI({ apiKey });
+      const result = await ai.models.generateContent(req.body);
+      res.json(result);
+    } catch (e: any) {
+      console.error("[RAG] Gemini API Proxy Error:", e);
+      res.status(500).json({ error: e.message || "Failed to process Gemini request" });
+    }
   });
 
   // File upload endpoint
